@@ -31,14 +31,3 @@ not measured results or a particular previous training run.
 Some simulation assets and provenance manifests referenced by the release
 utilities are not bundled. These utilities require additional local setup;
 this source-only archive is not a complete runnable evaluation environment.
-
-## Keep The Submission Clean
-
-Logging implementations and log-summary utilities are source code, not
-records of past runs. Running them can create new logs, machine paths, and
-runtime metadata. Do not resubmit a working directory after executing
-experiments without another privacy audit.
-
-Submit only the clean source archive. Do not include local backups, audit
-scratch files, hidden filesystem metadata, runtime outputs, or Git history.
-A `.gitignore` file alone does not exclude files from a manually created ZIP.

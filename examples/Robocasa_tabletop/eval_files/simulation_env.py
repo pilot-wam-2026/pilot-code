@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import gymnasium as gym
+from .seeded_episodes import SeededEpisodes, seed_scene, require_hash_seed
 import numpy as np
 import tyro
 import dataclasses
@@ -71,6 +72,7 @@ class SimulationConfig:
     """Main configuration for simulation environment."""
 
     env_name: str
+    seed: int = 7
     n_episodes: int = 2
     n_envs: int = 1
     video: VideoConfig = field(default_factory=VideoConfig)
@@ -89,7 +91,7 @@ class SimulationInferenceEnv:
         """Get action from the model based on observations."""
         # NOTE(YL)!
         # hot fix to change the video.ego_view_bg_crop_pad_res256_freq20 to video.ego_view
-        if "video.ego_view_bg_crop_pad_res256_freq20" in observations: # BUG @contributor here only one viwes
+        if "video.ego_view_bg_crop_pad_res256_freq20" in observations:
             observations["video.ego_view"] = observations.pop(
                 "video.ego_view_bg_crop_pad_res256_freq20"
             )
@@ -123,16 +125,35 @@ class SimulationInferenceEnv:
         # Use the provided model or fall back to the instance model
         if model is not None:
             self.model = model
-        
+
         if self.model is None:
             raise ValueError("No model provided. Please provide a model either in __init__ or run_simulation")
-        
+
+        require_hash_seed()
         start_time = time.time()
         print(
             f"Running {config.n_episodes} episodes for {config.env_name} with {config.n_envs} environments"
         )
         # Set up the environment
+        if config.n_envs != 1:
+            raise ValueError("The repaired seeded protocol currently requires n_envs=1")
         self.env = self.setup_environment(config)
+        try:
+            return self._run_initialized_simulation(config, start_time)
+        finally:
+            try:
+                if hasattr(self.model, "close_wm_videos"):
+                    self.model.close_wm_videos()
+            finally:
+                try:
+                    if self.env is not None:
+                        self.env.close()
+                finally:
+                    self.env = None
+
+    def _run_initialized_simulation(self, config, start_time):
+        if hasattr(self.model, "reset_episode"):
+            self.model.reset_episode()
         # Initialize tracking variables
         episode_lengths = []
         current_rewards = [0] * config.n_envs
@@ -182,13 +203,13 @@ class SimulationInferenceEnv:
                     # Reset trackers for this environment
                     current_rewards[env_idx] = 0
                     current_lengths[env_idx] = 0
+            if (terminations[0] or truncations[0]) and completed_episodes < config.n_episodes:
+                # Gymnasium 1.0 NEXT_STEP would otherwise infer on the old terminal
+                # observation, discard that action, and repopulate the old IK cache.
+                next_obs, _ = self.env.reset()
+                if hasattr(self.model, "reset_episode"):
+                    self.model.reset_episode()
             obs = next_obs
-        # Clean up
-        if hasattr(self.model, "close_wm_videos"):
-            self.model.close_wm_videos()
-        self.env.reset()
-        self.env.close()
-        self.env = None
         print(
             f"Collecting {config.n_episodes} episodes took {time.time() - start_time:.2f} seconds"
         )
@@ -232,7 +253,12 @@ class SimulationInferenceEnv:
 def _create_single_env(config: SimulationConfig, idx: int) -> gym.Env:
     """Create a single environment with appropriate wrappers."""
     # Create base environment
-    env = gym.make(config.env_name, enable_render=True)
+    initial_seed = seed_scene(config.seed + idx)
+    env = gym.make(config.env_name, enable_render=True, seed=initial_seed)
+    env = SeededEpisodes(env, base_seed=initial_seed, stride=config.n_envs)
+    if os.environ.get("WM4A_DIAGNOSTICS_DIR"):
+        from .episode_diagnostics import EpisodeDiagnostics
+        env = EpisodeDiagnostics(env, os.environ["WM4A_DIAGNOSTICS_DIR"], idx)
     # Add video recording wrapper if needed (only for the first environment)
     if config.video.video_dir is not None:
         video_recorder = VideoRecorder.create_h264(
@@ -268,6 +294,7 @@ def run_evaluation(
     n_envs: int = 1,
     n_action_steps: int = 2,
     max_episode_steps: int = 100,
+    seed: int = 7,
 ) -> Tuple[str, List[bool]]:
     """
     Simple entry point to run a simulation evaluation.
@@ -285,6 +312,7 @@ def run_evaluation(
     # Create configuration
     config = SimulationConfig(
         env_name=env_name,
+        seed=seed,
         n_episodes=n_episodes,
         n_envs=n_envs,
         video=VideoConfig(video_dir=video_dir),
@@ -307,25 +335,25 @@ class Args:
     port: int = 5678
     resize_size = [224,224]
 
-    #################################################################################################################
+
     # LIBERO environment-specific parameters
-    #################################################################################################################
+
     env_name: str = "gr1_unified/PnPMilkToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     n_episodes: int = 50  # Number of steps to wait for objects to stabilize i n sim
     n_envs: int = 1  # Number of rollouts per task
-    max_episode_steps: int = 360 # 
+    max_episode_steps: int = 360 #
     n_action_steps: int = 3
     num_inference_steps: int = 1
     shift: float = 5.0
 
-    #################################################################################################################
+
     # Utils
-    #################################################################################################################
-    video_out_path: str = "outputs/evaluation/videos"  # Path to save videos
+
+    video_out_path: str = "experiments/1029_qwenGR00T_fourier_gr1_unified_1000_PnPMilkToMicrowaveClose_gpus_woPretrain_wState/checkpoints/steps_20000_pytorch_model.pt.log/gr1_unified/logs/PnPMilkToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
 
-    pretrained_path: str = "/path/to/policy_run/checkpoints/model.pt"
+    pretrained_path: str = "results/Checkpoints/1029_qwenGR00T_fourier_gr1_unified_1000_PnPMilkToMicrowaveClose_gpus_woPretrain_wState/checkpoints/steps_20000_pytorch_model.pt"
 
 
 
@@ -359,6 +387,3 @@ def start_debugpy_once():
     print("🔍 Waiting for VSCode attach on 0.0.0.0:10092 ...")
     debugpy.wait_for_client()
     start_debugpy_once._started = True
-
-if __name__ == "__main__":
-    tyro.cli(eval_gr1_unified)

@@ -1,8 +1,8 @@
 {
-  "project": "WM4A",
-  "model": "WM4A",
-  "inference_steps": 5,
-  "max_policy_vram_gib": 34,
+  "project": "PILOT",
+  "model": "CosmoPredict25PerceiverVJEPA2AC",
+  "inference_steps": 20,
+  "max_policy_vram_gib": 40,
   "metadata_labels": [
     "cosmos"
   ],
@@ -62,15 +62,31 @@
     "gr1_unified/PosttrainPnPNovelFromTrayToTieredbasketSplitA_GR1ArmsAndWaistFourierHands_Env",
     "gr1_unified/PosttrainPnPNovelFromTrayToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env"
   ],
-  "validation_status": "pending",
-  "publication_status": "anonymous source submission",
+  "validation_status": "cpu_release_checks_passed_linux_cuda_portability_unverified",
+  "publication_status": "local_candidate_not_uploaded",
   "evaluation_protocol": {
     "tasks": 24,
     "episodes_per_task": 50,
     "n_envs": 1,
     "max_episode_steps": 720,
     "n_action_steps": 12,
-    "shift": 5
+    "shift": 5,
+    "seed": 9000,
+    "prompt_prefix": "Task:",
+    "action_sampling_steps": 20,
+    "success": "any_executed_physical_step",
+    "early_success_termination": false,
+    "protocol": "wm4a_contract_v2_any_physical_step",
+    "workers_per_policy": 4,
+    "render_device": "explicit physical GPU",
+    "policy_task_assignment": "round-robin by the ordered task list"
   },
-  "source_only": true
+  "source_only": true,
+  "checkpoint_step": 340000,
+  "checkpoint_keys": 2596,
+  "latent_normalization": "legacy",
+  "future_generation_frames": 5,
+  "checkpoint_bytes": 23913608021,
+  "checkpoint_sha256": "34bf115c1c99a33b12c79e1dca20e596cd510f006060687c2f145fecea58e60e",
+  "checkpoint_file": "checkpoints/steps_340000_pytorch_model.pt"
 }

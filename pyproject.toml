@@ -1,80 +1,14 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "starVLA"
-description = "WM4A anonymous research source based on StarVLA."
-version = "1.0.1"
+name = "pilot-wam"
+version = "0.1.0"
+description = "PILOT: Physical Inference for Latent Optimized Trajectories"
 readme = "README.md"
-requires-python = ">=3.10"
-keywords = ["vision-language-actions models", " robotic manipulation", "multimodal pretraining", "robot learning", "generative models"]
-license = {file = "LICENSE"}
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Education",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-"Programming Language :: Python :: 3 :: Only",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
-dependencies = [
-]
-
-[project.optional-dependencies]
-dev = [
-    "black>=24.2.0",
-    "gpustat",
-    "ipython",
-    "pre-commit",
-    "ruff>=0.2.2",
-]
-sagemaker = [
-    "boto3",
-    "sagemaker"
-]
-
+requires-python = ">=3.10,<3.11"
 
 [tool.setuptools.packages.find]
-where = ["."]
-exclude = [
-    "tests",         # test directory
-    "cache",         # cache directory
-    "playground",
-    "results",       # result directory
-    "checkpoints",   # model checkpoint
-    "scripts",       # script directory
-    "eval",          # evaluation related directory
-    ".vscode",       # VS Code configuration directory
-    "*.egg-info",    # egg-info metadata directory
-    "**.log",         # log file
-    "*.tmp",         # temporary file
-    "*.bak",         # backup file
-    "**__pycache__**",   # Python cache directory
-    "*.pyc",         # compiled Python file
-    "*.pyo",          # optimized Python file
-    "**bar**",
-    "starVLA/config",
-
-]
-
-[tool.setuptools.package-data]
-"cogact" = ["py.typed"]
-
-[tool.black]
-line-length = 121
-target-version = ["py310"]
-preview = true
-
-[tool.ruff]
-line-length = 121
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["A", "B", "E", "F", "I", "RUF", "W"]
-ignore = ["F722"]
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["E402", "F401"]
+include = ["starVLA*", "deployment*", "examples*", "release*"]
+exclude = ["third_party*", "tests*"]

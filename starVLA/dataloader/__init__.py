@@ -3,10 +3,11 @@ import os
 from accelerate.logging import get_logger
 import numpy as np
 from torch.utils.data import DataLoader
+import torch
+from .replay_dataset import ReplayDataset
 import numpy as np
 import torch.distributed as dist
 from pathlib import Path
-from starVLA.dataloader.vlm_datasets import make_vlm_dataloader
 
 logger = get_logger(__name__)
 
@@ -34,17 +35,17 @@ def save_dataset_statistics(dataset_statistics, run_dir):
 
 
 def build_dataloader(cfg, dataset_py="lerobot_datasets_oxe"):
-    # print("########### DATA.__init__.build_dataloader-1")
-    # print(dataset_py)               # lerobot_datasets
+
+
 
     # VLA_Dataset
     if dataset_py == "lerobot_datasets":
         from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
         vla_dataset_cfg = cfg.datasets.vla_data
-        # print(vla_dataset_cfg)
+
         """
         dataset_py: lerobot_datasets
-        data_root_dir: /path/to/workspace/datasets/
+        data_root_dir: /path/to/local-resource
         data_mix: robocasa_teleop_ee
         action_type: delta_ee
         CoT_prompt: Your task is {instruction}. To identify the key objects for your task.
@@ -65,15 +66,21 @@ def build_dataloader(cfg, dataset_py="lerobot_datasets_oxe"):
         include_state: true
         """
         vla_dataset = get_vla_dataset(data_cfg=vla_dataset_cfg)
-        # print(type(vla_dataset))                            # <class 'starVLA.dataloader.gr00t_lerobot.datasets.LeRobotMixtureDataset'>
-        # print(cfg.datasets.vla_data.per_device_batch_size)  # 16
-        # print(collate_fn)                                   # <function collate_fn at 0x7f06995d81f0>
+
+
+
         num_workers = int(getattr(cfg.datasets.vla_data, "num_workers", 8))
         pin_memory = bool(getattr(cfg.datasets.vla_data, "pin_memory", True))
         persistent_workers = bool(getattr(cfg.datasets.vla_data, "persistent_workers", True))
         prefetch_factor = int(getattr(cfg.datasets.vla_data, "prefetch_factor", 2))
 
+        stateful = bool(cfg.trainer.get("stateful_dataloader", False))
+        if stateful:
+            vla_dataset = ReplayDataset(vla_dataset, seed=int(getattr(cfg, "seed", 3047)))
+            # Recreate workers on epoch changes so their dataset epoch is current.
+            persistent_workers = False
         dataloader_kwargs = {
+            "generator": torch.Generator().manual_seed(int(getattr(cfg, "seed", 3047))),
             "batch_size": cfg.datasets.vla_data.per_device_batch_size,
             "collate_fn": collate_fn,
             "num_workers": num_workers,
@@ -87,15 +94,10 @@ def build_dataloader(cfg, dataset_py="lerobot_datasets_oxe"):
             vla_dataset,
             **dataloader_kwargs,
         )
-        if dist.get_rank() == 0: 
+        if not dist.is_initialized() or dist.get_rank() == 0:
             output_dir = Path(cfg.output_dir)
             vla_dataset.save_dataset_statistics(output_dir / "dataset_statistics.json")
-        # print("########### DATA.__init__.build_dataloader-2")
+
         return vla_train_dataloader
 
-    # VLM_Dataset
-    elif dataset_py == "vlm_datasets":
-        vlm_data_module = make_vlm_dataloader(cfg)
-        vlm_train_dataloader = vlm_data_module["train_dataloader"]
-        
-        return vlm_train_dataloader
+    raise ValueError("This release only supports lerobot_datasets")

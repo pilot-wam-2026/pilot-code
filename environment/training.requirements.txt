@@ -1,0 +1,15 @@
+-r policy.requirements.txt
+deepspeed==0.18.3
+torchdata==0.11.0
+wandb==0.23.1
+decord==0.6.0
+dm-tree==0.1.9
+pyarrow==23.0.1
+pandas==2.3.3
+datasets==4.8.4
+albumentations==1.4.18
+scikit-learn==1.7.2
+psutil==7.2.1
+numpydantic==1.6.9
+imageio==2.37.2
+numba==0.65.1

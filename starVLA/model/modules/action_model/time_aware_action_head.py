@@ -138,57 +138,57 @@ class PerceiverAttentionBlock(nn.Module):
         latents: torch.Tensor,
         timestep_embedding: torch.Tensor = None,
     ):
-        # print('################# PerceiverAttentionBlock.forward_for_WAM_VJEPA2AC-1')
+
         num_action_tokens = latents.shape[1] - self.num_non_action_tokens
 
         # (1) ln_1: 对latents做归一化 — 前65个token做普通LN，后16个token做AdaLN
-        # print(latents.shape)                # torch.Size([32, 81, 768])
+
         normed_non_action = self.ln_1_plain(latents[:, :self.num_non_action_tokens])
-        # print(normed_non_action.shape)      # torch.Size([32, 65, 768])
+
         normed_action = self.ln_1(latents[:, self.num_non_action_tokens:], timestep_embedding)
-        # print(normed_action.shape)          # torch.Size([32, 16, 768])
+
         normed_latents = torch.cat([normed_non_action, normed_action], dim=1)
-        # print(normed_latents.shape)         # torch.Size([32, 81, 768])
+
 
         # (2) ln_2: 对x(vl_tokens)做普通LN
-        # print(x.shape)                      # torch.Size([32, 196, 768])
+
         normed_x = self.ln_2_plain(x)
-        # print(normed_x.shape)               # torch.Size([32, 196, 768])
+
 
         # (3) 分离attention
         # future_tokens只attend [state_tokens, future_tokens, vl_tokens]
         # action_tokens可以attend [state_tokens, future_tokens, action_tokens, vl_tokens]
         non_action_kv = torch.cat([normed_non_action, normed_x], dim=1)
-        # print(non_action_kv.shape)          # torch.Size([32, 261, 768])
+
         full_kv = torch.cat([normed_latents, normed_x], dim=1)
-        # print(full_kv.shape)                # torch.Size([32, 277, 768])
+
 
         non_action_attn = self.attention(q=normed_non_action, kv=non_action_kv)
         action_attn = self.attention(q=normed_action, kv=full_kv)
-        # print(non_action_attn.shape)        # torch.Size([32, 65, 768])
-        # print(action_attn.shape)            # torch.Size([32, 16, 768])
+
+
 
         latents_non_action = latents[:, :self.num_non_action_tokens] + non_action_attn
-        # print(latents_non_action.shape)     # torch.Size([32, 65, 768])
+
         latents_action = latents[:, self.num_non_action_tokens:] + action_attn
-        # print(latents_action.shape)         # torch.Size([32, 16, 768])
+
         latents = torch.cat([latents_non_action, latents_action], dim=1)
-        # print(latents.shape)                # torch.Size([32, 81, 768])
+
 
         # (4) ln_ff: 对latents做归一化 — 前65个token做普通LN，后16个token做AdaLN
         ff_non_action = self.mlp(self.ln_ff_plain(latents[:, :self.num_non_action_tokens]))
-        # print(ff_non_action.shape)          # torch.Size([32, 65, 768])
+
         ff_action = self.mlp(self.ln_ff(latents[:, self.num_non_action_tokens:], timestep_embedding))
-        # print(ff_action.shape)              # torch.Size([32, 16, 768])
+
         latents = torch.cat([
             latents[:, :self.num_non_action_tokens] + ff_non_action,
             latents[:, self.num_non_action_tokens:] + ff_action,
         ], dim=1)
-        # print(latents.shape)                # torch.Size([32, 81, 768])
 
-        # print('################# PerceiverAttentionBlock.forward_for_WAM_VJEPA2AC-2')
+
+
         return latents
-    
+
     def forward(
         self,
         x: torch.Tensor,
@@ -196,7 +196,7 @@ class PerceiverAttentionBlock(nn.Module):
         timestep_embedding: torch.Tensor = None,
     ):
         print('Warning: this function should not used in WAM-VJEPA !!!!!! '
-        '(in /path/to/workspace/projects/WM4A/starVLA/model/modules/action_model/time_aware_action_head.py)')
+        '(in /path/to/local-resource)')
         normed_latents = self.ln_1(latents, timestep_embedding)
         latents = latents + self.attention(
             q=normed_latents,
@@ -300,8 +300,8 @@ class TimeAwareActionHead(PreTrainedModel):
         self.perceiver_blocks = nn.Sequential(
             *[
                 PerceiverAttentionBlock(
-                    d_model=self.action_dim, 
-                    n_heads=self.config.heads, 
+                    d_model=self.action_dim,
+                    n_heads=self.config.heads,
                     time_embedding_dim=self.config.time_embedding_dim,
                     num_non_action_tokens=self.num_target_vision_tokens+1,
                 )
@@ -345,19 +345,19 @@ class TimeAwareActionHead(PreTrainedModel):
         visual_language_states: torch.Tensor,  # Shape: (B, S, D)
         timestep: Optional[torch.LongTensor] = None,
     ):
-        # print('###### TimeAwareActionHead.forward-1')
-        # print(timestep.shape)       # torch.Size([32])
+
+
         time_embedding = self.time_encoder(timestep)
-        # print(time_embedding.shape) # torch.Size([32, 1, 768])
+
         time_bais = self.time_aware_linear(torch.nn.functional.silu(time_embedding))
-        # print(time_bais.shape)      # torch.Size([32, 1, 768])
+
 
         # 这里的81个tokens是由三组tokens拼接得到的，
         # 首先是1*state_token，随后是64*future_token，最后是16*action_token，
         # 我们认为这个time_baise只应该施加在action_tokens上，
-        # print(latents.shape)        # torch.Size([32, 81, 1024])
+
         latents[:, self.num_target_vision_tokens+1:] = latents[:, self.num_target_vision_tokens+1:] + time_bais
-        # print(latents.shape)        # torch.Size([32, 81, 1024])
+
 
         if self.vl_input_dim is not None:
             visual_language_states = self.proj_in(visual_language_states)
@@ -373,7 +373,7 @@ class TimeAwareActionHead(PreTrainedModel):
 
         if self.output_dim is not None:
             latents = self.proj_out(latents)
-        # print('###### TimeAwareActionHead.forward-2')
+
         return latents
 
 

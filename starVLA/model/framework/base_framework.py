@@ -32,7 +32,7 @@ logger = initialize_overwatch(__name__)
 
 
 # PreTrainedModel, AutoModel, PretrainedConfig,  are so good, find sometime to study them
-# TODO @contributor find sometime to merge yaml config with transformer config
+
 
 class baseframework(PreTrainedModel):
     """
@@ -50,7 +50,7 @@ class baseframework(PreTrainedModel):
         """
         Initialize base nn.Module. Subclasses add components.
         """
-        
+
         super().__init__(hf_config)
 
     @classmethod
@@ -83,6 +83,10 @@ class baseframework(PreTrainedModel):
         pretrained_checkpoint = Path(pretrained_checkpoint)
         model_config, norm_stats = read_mode_config(pretrained_checkpoint)  # read config and norm_stats
 
+        from starVLA.model.modules.world_model.latent_contract import prepare_checkpoint_config
+        model_config = prepare_checkpoint_config(
+            model_config, pretrained_checkpoint, kwargs.pop("latent_normalization", None)
+        )
         config = dict_to_namespace(model_config)
         model_config = config
         model_config.trainer.pretrained_checkpoint = None

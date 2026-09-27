@@ -202,17 +202,10 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.is_success = False
 
     def reset(self, **kwargs):
+        self._finish_video()
         result = super().reset(**kwargs)
         self.frames = list()
         self.step_count = 1
-        self.video_recorder.stop()
-
-        if self.video_dir is not None and self.file_path is not None:
-            # rename the file to indicate success or failure
-            original_filestem = self.file_path.stem
-            new_filestem = f"{original_filestem}_success{int(self.is_success)}"
-            new_file_path = self.video_dir / f"{new_filestem}.mp4"
-            os.rename(self.file_path, new_file_path)
 
         self.is_success = False
         if self.video_dir is not None:
@@ -221,6 +214,7 @@ class VideoRecordingWrapper(gym.Wrapper):
 
     def step(self, action):
         result = super().step(action)
+        self.is_success |= bool(result[-1]["success"])
         self.step_count += 1
         if self.file_path is not None and ((self.step_count % self.steps_per_render) == 0):
             if not self.video_recorder.is_ready():
@@ -229,8 +223,24 @@ class VideoRecordingWrapper(gym.Wrapper):
             frame = self.env.render()
             assert frame.dtype == np.uint8
             self.video_recorder.write_frame(frame)
-            self.is_success = result[-1]["success"]
         return result
+
+    def _finish_video(self):
+        self.video_recorder.stop()
+        if self.file_path is not None and self.file_path.exists():
+            destination = self.file_path.with_name(
+                f"{self.file_path.stem}_success{int(self.is_success)}.mp4"
+            )
+            if destination.exists():
+                raise FileExistsError(destination)
+            os.rename(self.file_path, destination)
+        self.file_path = None
+
+    def close(self):
+        try:
+            self._finish_video()
+        finally:
+            self.env.close()
 
     def render(self, mode="rgb_array", **kwargs):
         if self.video_recorder.is_ready():

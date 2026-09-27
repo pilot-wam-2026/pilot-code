@@ -124,6 +124,7 @@ class MultiStepWrapper(gym.Wrapper):
         self.obs = deque(maxlen=self.max_steps_needed + 1)
         self.reward = list()
         self.done = list()
+        self.truncated = list()
         self.info = defaultdict(lambda: deque(maxlen=self.max_steps_needed + 1))
 
     def convert_observation_space(self, observation_space, video_horizon, state_horizon):
@@ -191,6 +192,7 @@ class MultiStepWrapper(gym.Wrapper):
         self.obs = deque([obs] * (self.max_steps_needed + 1), maxlen=self.max_steps_needed + 1)
         self.reward = list()
         self.done = list()
+        self.truncated = list()
         self.info = defaultdict(lambda: deque(maxlen=self.max_steps_needed + 1))
 
         obs = self._get_obs(self.video_delta_indices, self.state_delta_indices)
@@ -204,11 +206,14 @@ class MultiStepWrapper(gym.Wrapper):
         states = []
         rewards = []
         dones = []
+        successes = []
+        if self.done and (self.done[-1] or self.truncated[-1]):
+            raise RuntimeError("Reset the environment before stepping a finished episode")
         for step in range(self.n_action_steps):
             act = {}
             for key, value in action.items():
                 act[key] = value[step, :]
-            if len(self.done) > 0 and self.done[-1]:
+            if self.done and (self.done[-1] or self.truncated[-1]):
                 # termination
                 break
             observation, reward, done, truncated, info = super().step(act)
@@ -222,14 +227,21 @@ class MultiStepWrapper(gym.Wrapper):
                 len(self.reward) >= self.max_episode_steps
             ):
                 # truncation
-                done = True
+                truncated = True
             self.done.append(done)
+            self.truncated.append(truncated)
+            successes.append(bool(info["success"]))
             self._add_info(info)
 
         observation = self._get_obs(self.video_delta_indices, self.state_delta_indices)
         reward = aggregate(self.reward, self.reward_agg_method)
         done = aggregate(self.done, "max")
+        truncated = aggregate(self.truncated, "max")
         info = dict_take_last_n(self.info, self.max_steps_needed)
+        # Success can occur and disappear before the end of an action chunk.
+        info["success_last_step"] = np.array([successes[-1]], dtype=bool)
+        info["success"] = np.array([any(successes)], dtype=bool)
+        info["executed_steps"] = len(rewards)
         states = np.array(states)
         rewards = np.array(rewards)
         dones = np.array(dones)

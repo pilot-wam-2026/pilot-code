@@ -17,7 +17,7 @@ class PolicyWarper:
         unnorm_key: Optional[str] = "gr1",
         policy_setup: str = "franka",
         horizon: int = 0,
-        action_ensemble = False, # @contributor
+        action_ensemble = False,
         action_ensemble_horizon: Optional[int] = 3, # different cross sim
         image_size: list[int] = [224, 224],
         use_ddim: bool = True,
@@ -28,7 +28,7 @@ class PolicyWarper:
         n_action_steps=2,
         prompt_speed: int = 2500,
     ) -> None:
-        
+
         # build client to connect server policy
         self.client = WebsocketClientPolicy(host, port)
         self.policy_setup = policy_setup
@@ -60,7 +60,7 @@ class PolicyWarper:
         self.num_image_history = 0
         self.action_norm_stats = self.get_action_stats(self.unnorm_key, policy_ckpt_path=policy_ckpt_path)
         self.state_norm_stats = self.get_state_stats(self.unnorm_key, policy_ckpt_path=policy_ckpt_path)
-        
+
         print(f"DEBUG: use_eepose = {self.use_eepose}")
         if self.use_eepose:
             print("DEBUG: Entering if self.use_eepose block")
@@ -70,10 +70,10 @@ class PolicyWarper:
                 print("DEBUG: Import successful, creating GR1RetargetConfig")
                 gr1_config = GR1RetargetConfig()
                 print("DEBUG: GR1RetargetConfig created, creating BodyRetargeter")
-                
+
                 # 然后，通过这个实例来访问属性
                 self.body_retargeter = BodyRetargeter(
-                    urdf_path=Path(gr1_config.urdf_path), 
+                    urdf_path=Path(gr1_config.urdf_path),
                     camera_intrinsics=gr1_config.camera_intrinsics
                 )
                 print("Enabled EEPose processing in Gr00tPolicy.")
@@ -84,12 +84,13 @@ class PolicyWarper:
                 self.use_eepose = False
         else:
             print(f"DEBUG: use_eepose is False, skipping initialization")
-        
+
     def _add_image_to_history(self, image: np.ndarray) -> None:
         self.image_history.append(image)
         self.num_image_history = min(self.num_image_history + 1, self.horizon)
     def reset(self, task_description: str or tuple) -> None:
-       
+
+        self.reset_episode()
         self.task_description = task_description
         self.image_history.clear()
         if self.action_ensemble:
@@ -99,6 +100,14 @@ class PolicyWarper:
         self.gripper_action_repeat = 0
         self.sticky_gripper_action = 0.0
         self.previous_gripper_action = None
+
+    def reset_episode(self, env_idx=None):
+        retargeter = getattr(self, "body_retargeter", None)
+        if retargeter is not None:
+            retargeter.reset_ik_cache(env_idx=env_idx)
+
+    def finish_eval_episode(self, env_idx, episode_id, success):
+        self.reset_episode(env_idx=env_idx)
 
     def _format_prompt(self, task_text: str) -> str:
         task_text = str(task_text).strip().rstrip(".")
@@ -132,7 +141,7 @@ class PolicyWarper:
         return instructions
 
     def step(
-        self, 
+        self,
         observations,
         **kwargs
     ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
@@ -142,16 +151,16 @@ class PolicyWarper:
         :param task_description: 任务描述文本
         :return: (原始动作, 处理后的动作)
         """
-        task_description = observations['annotation.human.coarse_action'][0] # tuple       
+        task_description = observations['annotation.human.coarse_action'][0] # tuple
         ego_view = observations['video.ego_view']  # (N, 1, H, W, 3)
         images = ego_view   # (N, 1, 3)
-        
+
         if self.use_eepose:
             # 1. 使用 BodyRetargeter 将 EEpose 转换为标准状态表示
             obs_copy = observations.copy()
             full_44dof_vector = self._build_full_44dof_vector(obs_copy)
             (left_hand_positions, left_hand_axisangles), (right_hand_positions, right_hand_axisangles), (left_qpos_states, right_qpos_states) = self.body_retargeter.process_frame_kinematics_axisangle(full_44dof_vector)
-            #print(f"Left hand positions shape: {left_hand_positions.shape}, axis-angles shape: {left_hand_axisangles.shape}")
+
             # 2. 将转换后的状态添加回 obs_copy
             left_arm_state = obs_copy.get("state.left_arm", None)
             right_arm_state = obs_copy.get("state.right_arm", None)
@@ -203,7 +212,7 @@ class PolicyWarper:
         examples = []
         batch_size = len(images)
         instructions = self._build_instructions(batch_size)
-        #print(input_state)
+
         #import pdb; pdb.set_trace()
         for b in range(batch_size):
             example = {
@@ -213,7 +222,7 @@ class PolicyWarper:
                 "embodiment_tag": 24,  # GR1, matches robocasa_teleop_ee training samples.
             }
             examples.append(example)
-        
+
         vla_input = {
             "examples": examples,
             "do_sample": False,
@@ -221,18 +230,18 @@ class PolicyWarper:
             "num_ddim_steps": self.num_ddim_steps,
         }
         self._update_vla_input(vla_input)
-        
+
         response = self.client.predict_action(vla_input)
         self._handle_model_response(response, images)
-        
-        
+
+
         # unnormalize the action
-        normalized_actions = response["data"]["normalized_actions"] # B, chunk, D  
+        normalized_actions = response["data"]["normalized_actions"] # B, chunk, D
         # normalized_actions = normalized_actions[:, :, :self.effective_dim]
         self._log_action_debug("normalized_actions_model", normalized_actions)
         normalized_actions = normalized_actions[:, :, [i for i in range(self.effective_dim) if i not in (12, 13)]]
         self._log_action_debug("normalized_actions_exec", normalized_actions)
-        
+
         # unnormalize actions in batch form
         raw_actions = self.unnormalize_actions(normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats)
         self._log_action_debug("raw_actions_exec", raw_actions)
@@ -256,9 +265,9 @@ class PolicyWarper:
             # 从模型输出的6-DoF EE Pose动作中提取 pos 和 axis-angle
             pred_left_eepose_seq = raw_action["action.left_arm"]
             pred_right_eepose_seq = raw_action["action.right_arm"]
-            
+
             batch_size, horizon, _ = pred_left_eepose_seq.shape
-            
+
             # 初始化用于存储IK结果的数组
             q_left_arm_seq = np.zeros((batch_size, horizon, 7)) # 目标是7-DoF
             q_right_arm_seq = np.zeros((batch_size, horizon, 7)) # 目标是7-DoF
@@ -271,7 +280,7 @@ class PolicyWarper:
                 # 提取当前时间步 t 的EE Pose动作，形状为 (B, 6)
                 left_eepose_t = pred_left_eepose_seq[:, t, :]
                 right_eepose_t = pred_right_eepose_seq[:, t, :]
-                #print(f"Time step {t}: Left EE Pose shape: {left_eepose_t.shape}, Right EE Pose shape: {right_eepose_t.shape}")
+
                 # 将EE Pose分解为位置和轴角
                 left_hand_pos = left_eepose_t[:, :3]
                 left_hand_axisangle = left_eepose_t[:, 3:6]
@@ -292,14 +301,14 @@ class PolicyWarper:
                     q_left_arm_seq[:, t, :] = q_left_arm_t
                 if q_right_arm_t is not None:
                     q_right_arm_seq[:, t, :] = q_right_arm_t
-                
+
                 # 使用当前步的IK解作为下一步的初始猜测，以保证动作的连续性
                 q_init_left = q_left_arm_t
                 q_init_right = q_right_arm_t
             # 将完整的关节角序列更新回 raw_action 字典
             raw_action["action.left_arm"] = q_left_arm_seq
             raw_action["action.right_arm"] = q_right_arm_seq
-        
+
         else:
             raw_action = {
                 "action.left_arm": raw_actions[:, :self.n_action_steps, :7],      # (B, n_action_steps, 7)
@@ -344,15 +353,15 @@ class PolicyWarper:
         """
         mask = action_norm_stats.get("mask", np.ones_like(action_norm_stats["min"], dtype=bool))
         action_high, action_low = np.array(action_norm_stats["max"]), np.array(action_norm_stats["min"])
-        
+
         normalized_actions = np.clip(normalized_actions, -1, 1)
-        
+
         actions = np.where(
             mask,
             (normalized_actions + 1) / 2 * (action_high - action_low) + action_low,
             normalized_actions,
         )
-        
+
         return actions
     @staticmethod
     def get_action_stats(unnorm_key: str, policy_ckpt_path) -> dict:
@@ -404,7 +413,7 @@ class PolicyWarper:
         axs["image"].set_xlabel("Time in one episode (subsampled)")
         plt.legend()
         plt.savefig(save_path)
-    
+
     @staticmethod
     def _check_unnorm_key(norm_stats, unnorm_key):
         """
@@ -423,7 +432,7 @@ class PolicyWarper:
             f"please choose from: {norm_stats.keys()}"
         )
         return unnorm_key
-    
+
     def normalize_state(self, state: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """
         Normalize the state
@@ -464,7 +473,7 @@ class PolicyWarper:
             if key.startswith("state."):
                 batch_size = obs_dict[key].shape[0]
                 break
-        
+
         if batch_size == 0:
             # 如果没有找到任何 state key，无法确定批次大小，返回空数组或抛出错误
             # 这里我们假设至少会有一个 state key
@@ -479,14 +488,14 @@ class PolicyWarper:
         # 遍历布局，填充 full_vector
         for part_name, (start, end) in layout_44dof.items():
             obs_key = f"state.{part_name}"
-            
+
             if obs_key in obs_dict:
                 # 提取数据，形状为 (B, T, D)
                 data = np.asarray(obs_dict[obs_key])
-                
+
                 # 我们只关心最后一个时间步的数据，其形状为 (B, D)
                 last_time_step_data = data[:, -1, :]
-                
+
                 # 将数据填充到 full_vector 的正确位置
                 full_vector[:, start:end] = last_time_step_data
             # 如果 obs_key 不在字典中，则该部分将保持为零，符合要求

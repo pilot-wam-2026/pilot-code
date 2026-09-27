@@ -85,7 +85,3 @@ def _main():
 
     client.close()
     logging.info("Smoke test done.")
-
-
-if __name__ == "__main__":
-    _main()

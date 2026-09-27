@@ -29,17 +29,17 @@ def make_LeRobotSingleDataset(
     param data_cfg              数据配置, 包含可选的视频后端设置。
     """
 
-    # print("########### DATA.lerobot_datasets.make_LeRobotSingleDataset-1")
+
     data_config = ROBOT_TYPE_CONFIG_MAP[robot_type]
     modality_config = data_config.modality_config()
     transforms = data_config.transform()
     dataset_path = data_root_dir / data_name
-    # print(robot_type)           # fourier_gr1_arms_waist
-    # print(data_config)
+
+
     """
     <starVLA.dataloader.gr00t_lerobot.data_config.FourierGr1ArmsWaistDataConfig object at 0x7efbe15b4b80>
     """
-    # print(modality_config)
+
     """
     {   
         'video': ModalityConfig(
@@ -60,7 +60,7 @@ def make_LeRobotSingleDataset(
         )
     }
     """
-    # print(transforms)
+
     """
         apply_to=[] 
         training=True 
@@ -134,17 +134,17 @@ def make_LeRobotSingleDataset(
             )
         ]
     """
-    # print(dataset_path)
+
     """
-    /path/to/workspace/datasets/PhysicalAI-Robotics-GR00T-Teleop-Sim/LeRobot_eepose/gr1_unified.PnPBottleToCabinetClose_ee
+    /path/to/local-resource
     """
-    
+
     if robot_type not in ROBOT_TYPE_TO_EMBODIMENT_TAG:
         print(f"Warning: Robot type {robot_type} not found in ROBOT_TYPE_TO_EMBODIMENT_TAG, using {EmbodimentTag.NEW_EMBODIMENT} as default")
         embodiment_tag = EmbodimentTag.NEW_EMBODIMENT
     else:
         embodiment_tag = ROBOT_TYPE_TO_EMBODIMENT_TAG[robot_type]
-    
+
     video_backend = data_cfg.get("video_backend", "decord") if data_cfg else "decord"
     dataset = LeRobotSingleDataset(
         dataset_path=dataset_path,
@@ -155,7 +155,7 @@ def make_LeRobotSingleDataset(
         delete_pause_frame=delete_pause_frame,
         data_cfg=data_cfg,
     )
-    # print("########### DATA.lerobot_datasets.make_LeRobotSingleDataset-2")
+
     return dataset
 
 def get_vla_dataset(
@@ -166,16 +166,16 @@ def get_vla_dataset(
     seed: int = 42,
     **kwargs: dict,
 ) -> LeRobotMixtureDataset:
-    # print("########### DATA.lerobot_datasets.get_vla_dataset-1")
+
     data_root_dir = data_cfg.data_root_dir
     data_mix = data_cfg.data_mix
     delete_pause_frame = data_cfg.get("delete_pause_frame", False)
     mixture_spec = DATASET_NAMED_MIXTURES[data_mix]
-    # print(data_cfg.data_root_dir)   # /path/to/workspace/datasets/
-    # print(data_cfg.data_mix)        # robocasa_teleop_ee
-    # print(delete_pause_frame)       # False
-    # print(data_mix)                 # robocasa_teleop_ee
-    # print(mixture_spec)
+
+
+
+
+
     """
     [
         ('PhysicalAI-Robotics-GR00T-Teleop-Sim/LeRobot_eepose/gr1_unified.PnPBottleToCabinetClose_ee', 1.0, 'fourier_gr1_arms_waist'), 
@@ -206,26 +206,26 @@ def get_vla_dataset(
     """
 
     included_datasets, filtered_mixture_spec = set(), []
-    for d_name, d_weight, robot_type in mixture_spec:  
+    for d_name, d_weight, robot_type in mixture_spec:
         dataset_key = (d_name, robot_type)
         if dataset_key in included_datasets:
             print(f"Skipping Duplicate Dataset: `{(d_name, d_weight, robot_type)}`")
             continue
         included_datasets.add(dataset_key)
         filtered_mixture_spec.append((d_name, d_weight, robot_type))
-    # print(len(included_datasets))           # 24
-    # print(len(filtered_mixture_spec))       # 24
+
+
 
     dataset_mixture = []
     for d_name, d_weight, robot_type in filtered_mixture_spec:
         single_dataset = make_LeRobotSingleDataset(
-            Path(data_root_dir), 
-            d_name, 
-            robot_type, 
-            delete_pause_frame=delete_pause_frame, 
+            Path(data_root_dir),
+            d_name,
+            robot_type,
+            delete_pause_frame=delete_pause_frame,
             data_cfg=data_cfg
             )
-        # print(type(single_dataset))         # <class 'starVLA.dataloader.gr00t_lerobot.datasets.LeRobotSingleDataset'>
+
         dataset_mixture.append((single_dataset, d_weight))
 
     dataset = LeRobotMixtureDataset(
@@ -237,57 +237,8 @@ def get_vla_dataset(
         data_cfg=data_cfg,
         **kwargs,
     )
-    # print(mode)                         # train
-    # print(balance_dataset_weights)      # True
-    # print(balance_trajectory_weights)   # False
-    # print("########### DATA.lerobot_datasets.get_vla_dataset-2")
+
+
+
+
     return dataset
-
-
-
-if __name__ == "__main__":
-
-    # import debugpy
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config_yaml", type=str, default="./examples/Robocasa_tabletop/train_files/starvla_cotrain_robocasa_gr1.yaml", help="Path to YAML config")
-    args, clipargs = parser.parse_known_args()
-
-    # debugpy.listen(("0.0.0.0", 10092))
-    # print("🔍 Rank 0 waiting for debugger attach on port 10092...")
-    # debugpy.wait_for_client()
-    # args.config_yaml = "./examples/Suqian_agibot/train_files/starvla_cotrain_robocasa_gr1.yaml"
-    cfg = OmegaConf.load(args.config_yaml)
-    cfg.datasets.vla_data.data_mix = "sq_egodex-f_agi_beta"
-    vla_dataset_cfg = cfg.datasets.vla_data
-    # cfg.datasets.vla_data.include_state = True
-    vla_dataset_cfg.task_id = 1
-    for task_id in ["all"]:
-        vla_dataset_cfg.task_id = task_id
-        print(f"Testing Task ID: {task_id}")
-        dataset = get_vla_dataset(data_cfg=vla_dataset_cfg)
-        # dataset
-    from torch.utils.data import DataLoader
-    train_dataloader = DataLoader(
-        dataset,
-        batch_size=2,
-        num_workers=1, # For Debug
-        collate_fn=collate_fn,
-    )
-
-    cfg.output_dir = "./output/debug"
-    output_dir = Path(cfg.output_dir)
-    dataset.save_dataset_statistics(output_dir / "dataset_statistics.json")
-
-    from tqdm import tqdm
-    count = 0
-    for batch in tqdm(train_dataloader, desc="Processing Batches"):
-        # print(batch[0].keys())
-        action = batch[0]['action']
-        print('action', action[0])
-        print('action_mask', batch[0]['action_mask'][0])
-        # print(1)
-        if count > 100:
-            break
-        count += 1
-        pass

@@ -1,77 +1,84 @@
-# WM4A Environment Installation
+# Runtime Environments
 
-Use Linux x86_64 with an NVIDIA CUDA driver and EGL rendering libraries.
-Keep the policy and simulation dependencies in separate Python 3.10
-environments. These installation scripts do not provide a native macOS runtime.
+The resource bundle is portable source and data, not a copy of a user's
+activated shell or credential cache. Absolute private paths, SSH settings,
+tokens, shell history, and unrelated environments are not included.
 
-## Prerequisites
+## Platform
 
-- Install Conda or Miniforge and make `conda` available on `PATH`.
-- Provide the CUDA toolkit and C++ compiler needed to build FlashAttention.
-- Provide host NVIDIA EGL libraries. `EGL_LIBRARY_PATH` can select their location.
-- Supply the required RoboCasa, RoboSuite, pykdl_utils, hrl_geom, and
-  Orocos KDL / PyKDL sources before using the corresponding components.
-- The KDL build script expects
-  `third_party/orocos_kinematics_dynamics`. This directory is absent from
-  the current copy and must be supplied before the KDL build.
+Use Linux x86_64 with an NVIDIA driver compatible with the chosen CUDA
+wheels and working EGL. The policy uses PyTorch 2.8.0/CUDA 12.8; the
+simulator uses PyTorch 2.5.1 and MuJoCo 3.2.6. Do not combine their NumPy
+environments: the validated policy uses NumPy 2.2.6 and simulation uses
+NumPy 1.26.4.
 
-## Create Separate Environments
+macOS can store and inspect this bundle. CUDA policy inference and the
+supplied Linux simulator have not been ported to macOS/MPS.
 
-Run from the repository root with a new absolute prefix:
+## Create New Environments
 
 ```bash
-bash environment/create_linux_envs.sh /absolute/empty/environment/prefix
+bash environment/create_linux_envs.sh /absolute/new/pilot-envs
+export POLICY_PYTHON=/absolute/new/pilot-envs/policy/bin/python
+export SIM_PYTHON=/absolute/new/pilot-envs/simulation/bin/python
+source environment/activate_paths.sh
 ```
 
-The script creates `policy` and `simulation` subdirectories and refuses
-to overwrite existing environments. Package installation requires access
-to the configured Conda and pip package indexes.
+The script refuses to overwrite existing environment directories. Conda,
+a C++ build toolchain, a compatible CUDA development toolkit (`nvcc`) for
+the FlashAttention build, and sufficient disk space are required. The PyKDL
+build uses the supplied Orocos 1.5.4 source. Driver libraries remain host
+dependencies; do not copy another host's driver libraries over system files.
 
-## Dependency Versions
+`validated_versions.json` records the source evaluation's versions.
+The requirement files describe installation inputs; a clean installation
+still requires its own preflight and smoke test. Training additionally uses
+`training.requirements.txt`.
 
-| Component | Policy | Simulation |
-| --- | --- | --- |
-| Python | 3.10.19 | 3.10.18 |
-| PyTorch | 2.8.0 + CUDA 12.8 | 2.5.1 + CUDA 12.4 |
-| TorchVision | 0.23.0 | 0.20.1 |
-| NumPy | 2.2.6 | 1.26.4 |
-| Gymnasium | Not required | 1.0.0 |
-| MuJoCo | Not required | 3.2.6 |
-| Transformers | 5.8.1 | Not required |
-| Diffusers | 0.38.0 | Not required |
-| FlashAttention | 2.8.3 | Not required |
-| PyKDL | Not required | 1.5.4 |
-| PyAV | 12.3.0 | 12.3.0 |
+## Environment Variables
 
-Dependency lists are stored in `policy.requirements.txt` and
-`simulation.requirements.txt`. The `*.observed.json` files contain package
-metadata, which can include duplicate entries; use the pinned installation
-scripts and requirement files for environment creation.
+| Variable | Purpose |
+|---|---|
+| `PILOT_ROOT` | Root of the extracted release |
+| `POLICY_PYTHON` | Policy interpreter |
+| `SIM_PYTHON` | Simulator interpreter |
+| `CUDA_VISIBLE_DEVICES` | Explicitly assigned CUDA device(s); never set to reserve resources |
+| `MUJOCO_EGL_DEVICE_ID` | Physical EGL device index; set per simulator process |
+| `MUJOCO_GL=egl` | Headless MuJoCo rendering backend |
+| `PYOPENGL_PLATFORM=egl` | OpenGL backend |
+| `EGL_LIBRARY_PATH` | Optional directory containing the host's NVIDIA EGL libraries |
+| `PYTHONHASHSEED=0` | Fixed Python hash seed, set before interpreter startup |
+| `PILOT_DATA_ROOT` | External converted dataset root for training |
+| `PILOT_OUTPUT_ROOT` | New training output root, outside the release |
+| `PILOT_COSMOS_ROOT` | Constructor-compatible Cosmos initialization directory |
+| `PILOT_VJEPA_CHECKPOINT` | Constructor-compatible VJEPA initialization file |
 
-## KDL Build
+`activate_paths.sh` contains the portable non-secret environment setup.
+`release.evaluate` creates isolated child-process environments, explicitly
+sets each CUDA/EGL assignment, and does not overwrite the user's shell.
 
-The environment script invokes `build_kdl.sh` for the simulation environment.
-To invoke that build separately, supply the Python executable and prefix:
+## Storage And Verification
 
-```bash
-bash environment/build_kdl.sh /absolute/prefix/simulation/bin/python /absolute/prefix/simulation
+The checkpoint is 23.91 GB in decimal units. Simulation assets occupy
+approximately 9.6 GB unpacked. Backbone materialization requires about
+another checkpoint's size; environments and evaluation videos add more.
+120 GiB free storage and 128 GiB host RAM are conservative planning values.
+
+The published asset archive, when present, is restored by
+`python -m release.unpack_assets`. It rejects unsafe paths and verifies
+file hashes. `python -m release.verify --assets` checks both checkpoint
+and unpacked-resource integrity.
+
+Required local resources:
+
+```text
+third_party/robocasa/
+third_party/robosuite/
+third_party/pykdl_utils/
+third_party/hrl_geom/
+third_party/orocos_kinematics_dynamics/
+runtime_assets/GR1T2/GR1T2_fourier_hand_6dof.urdf
 ```
 
-Use a new build directory and the Python 3.10 interpreter from that prefix.
-
-## Local Path Configuration
-
-Example paths under `/path/to/` are placeholders for locally supplied resources.
-Set these variables for the root `run_training.sh` entry point:
-
-- `CUDA_VISIBLE_DEVICES`: GPU IDs allocated to this run.
-- `WM4A_DATA_ROOT`: local dataset directory.
-- `WM4A_COSMOS_ROOT`: local Cosmos initialization directory.
-- `WM4A_VJEPA_CHECKPOINT`: local V-JEPA initialization checkpoint.
-- `WM4A_RESUME_CHECKPOINT`: local policy resume checkpoint.
-- `WM4A_OUTPUT_ROOT`: optional output directory.
-- `WM4A_CONFIG` and `WM4A_VJEPA_REPO`: optional local overrides.
-
-The root launcher defaults to one process and disables W&B network tracking.
-No account credentials are bundled. Additional example launchers require
-their placeholder paths to be configured before use.
+The customized environment is not interchangeable with a generic current
+RoboCasa wheel. Legal notices in these directories must remain intact.

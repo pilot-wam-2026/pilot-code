@@ -9,6 +9,8 @@ inference to return the image predicted after the action chunk horizon.
 """
 
 from dataclasses import dataclass, field
+from starVLA.model.modules.world_model.latent_contract import validate_generation_length
+from starVLA.model.modules.world_model.reproducibility import isolated_visualization, seeded_inference
 from typing import List, Optional
 
 import numpy as np
@@ -38,7 +40,7 @@ class CosmoPredict25PerceiverVJEPA2ACDefaultConfig(CosmoPredict25PerceiverDefaul
 
     future_image_generation: dict = field(default_factory=lambda: {
         "enabled": True,
-        "num_frames": 93,
+        "num_frames": 5,
         "num_inference_steps": 36,
         "guidance_scale": 7.0,
         "output_type": "pil",
@@ -46,7 +48,7 @@ class CosmoPredict25PerceiverVJEPA2ACDefaultConfig(CosmoPredict25PerceiverDefaul
         "width": 1280,
         "max_sequence_length": 512,
         "conditional_frame_timestep": 0.1,
-        "num_latent_conditional_frames": 2,
+        "num_latent_conditional_frames": 1,
         "conditioning_mode": "auto",
         "max_samples": 1,
         "return_full_video": False,
@@ -66,40 +68,40 @@ class CosmoPredict25PerceiverVJEPA2ACDefaultConfig(CosmoPredict25PerceiverDefaul
 class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
 
     def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
-        # print('################# CosmoPredict25_Perceiver_VJEPA2AC-1')
+
         baseframework.__init__(self)
         self.config = merge_framework_config(CosmoPredict25PerceiverVJEPA2ACDefaultConfig, config)
 
         # 1. 加载预训练的CosmoPredictr2.5类作为self.backbone
         # WM4A/starVLA/model/modules/world_model/CosmoPredict25.py
         self.backbone = get_world_model(config=self.config)
-        # print(type(self.backbone))              # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface'>
+
 
         wm_hidden = self.backbone.model.config.hidden_size
         self.config.framework.qwenvl.vl_hidden_dim = wm_hidden
         self.config.framework.action_model.diffusion_model_cfg.cross_attention_dim = wm_hidden
-        # print(wm_hidden)                        # 2048
+
 
         # 2. 初始化FlowmatchingActionHead作为self.action_model
         # WM4A/starVLA/model/modules/action_model/PerceiverHead.py
         self.action_model: FlowmatchingActionHead = get_action_model(config=self.config)
-        # print(type(self.action_model))          # <class 'starVLA.model.modules.action_model.PerceiverHead.FlowmatchingActionHead'>
+
 
         self.future_action_window_size = self.config.framework.action_model.future_action_window_size
         self.past_action_window_size = self.config.framework.action_model.past_action_window_size
         self.chunk_len = self.past_action_window_size + 1 + self.future_action_window_size
         self.state_dim = self.config.framework.action_model.get("state_dim", None)
-        # print(self.future_action_window_size)   # 15
-        # print(self.past_action_window_size)     # 0
-        # print(self.chunk_len)                   # 16
-        # print(self.state_dim)                   # 64
+
+
+
+
 
         # 3. 加载vjepa_encoder和vjepa_decoder，并将其权重固定为bf16
         vjepa2_ac_cfg = self.config.framework.get("vjepa2_ac")
         vjepa2_ac_repo_dir = vjepa2_ac_cfg.get("repo_dir")
         vjepa2_ac_pretrained = vjepa2_ac_cfg.get("pretrained")
-        # print(vjepa2_ac_repo_dir)               # /path/to/workspace/projects/WM4A/starVLA/facebookresearch_vjepa2_main
-        # print(vjepa2_ac_pretrained)             # /path/to/workspace/models/VJEPA2-AC/vjepa2-ac-vitg.pt
+
+
         self.vjepa_encoder, self.vjepa_predictor = torch.hub.load(
             vjepa2_ac_repo_dir,
             "vjepa2_ac_vit_giant",
@@ -127,8 +129,8 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         for name, p in self.vjepa_predictor.named_parameters():
             assert p.dtype == torch.bfloat16, f"vjepa_predictor.{name} dtype={p.dtype}, expected bfloat16"
 
-        # print(type(self.vjepa_encoder))         # <class 'src.models.vision_transformer.VisionTransformer'>
-        # print(type(self.vjepa_predictor))       # <class 'src.models.ac_predictor.VisionTransformerPredictorAC'>
+
+
 
         # 初始化VJEPA2-AC的图像预处理transform，与官方energy_landscape_example.ipynb保持一致
         from starVLA.facebookresearch_vjepa2_main.app.vjepa_droid.transforms import make_transforms as vjepa2_make_transforms
@@ -147,16 +149,16 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             self.vjepa_predictor.predictor_embed.out_features,
             bias=True
         ).to(torch.bfloat16)
-        # print(self.state_dim)                                       # 64
-        # print(self.vjepa_predictor.predictor_embed.out_features)    # 1024
+
+
         self.action_projector = torch.nn.Linear(
             self.action_model.model.config.output_dim,
             self.vjepa_predictor.predictor_embed.out_features,
             bias=True
         ).to(torch.bfloat16)
-        # print(self.action_model.model.config.output_dim)            # 1024
-        # print(self.vjepa_predictor.predictor_embed.out_features)    # 1024
-        # print('################# CosmoPredict25_Perceiver_FutureImage-2')
+
+
+
 
     @staticmethod
     def _as_sequence(images):
@@ -205,42 +207,44 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         return (int(raw_frame_count) - 1) // temporal_factor + 1
 
     def _build_future_video_sequences(self, batch_images: List, future_images: List) -> tuple[List[List], List[int], List[int]]:
-        # print('################# CosmoPredict25_Perceiver_FutureImage._build_future_video_sequences-1')
+
         temporal_factor = int(getattr(self.backbone, "vae_scale_factor_temporal", 4))
         raw_sequences = []
         condition_counts = []
         sample_counts = []
-        # print(temporal_factor)              # 4
-        # print(len(batch_images))            # 8
-        # print(len(future_images))           # 8
+
+
+
 
         for images, future_image in zip(batch_images, future_images):
             current_sequence = self._as_sequence(images)
             future_sequence = self._as_sequence(future_image)
-            # print(len(current_sequence))    # 1
-            # print(len(future_sequence))     # 1
+
+
             if not current_sequence or not future_sequence:
                 raise ValueError("future image training needs both current image and future_image.")
 
+            if len(future_sequence) != 1:
+                raise ValueError("This image objective expects one future target, not an ignored multi-frame sequence")
             future_frame = future_sequence[0]
-            # print(type(future_frame))       # <class 'PIL.Image.Image'>
+
             raw_sequence = current_sequence + [future_frame] * temporal_factor
             raw_sequences.append(raw_sequence)
 
             condition_count = self._latent_frame_count(len(current_sequence))
             sample_count = self._latent_frame_count(len(raw_sequence))
-            # print(condition_count)          # 1
-            # print(sample_count)             # 2
+
+
             condition_counts.append(condition_count)
             sample_counts.append(sample_count)
 
-        # print('################# CosmoPredict25_Perceiver_FutureImage._build_future_video_sequences-2')
+
         return raw_sequences, condition_counts, sample_counts
 
     # 训练时
     # future_image支路，self.backbone.transformer()
     def _cosmos25_future_image_loss(self, examples: List[dict]) -> Optional[torch.Tensor]:
-        # print('################# CosmoPredict25_Perceiver_FutureImage._cosmos25_future_image_loss-1')
+
         if "future_image" not in examples[0]:
             return None
         training_cfg = self._future_image_training_cfg()
@@ -252,15 +256,15 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         batch_images = [to_pil_preserve(example["image"]) for example in examples]
         future_images = [to_pil_preserve(example["future_image"]) for example in examples]
         instructions = [example["lang"] for example in examples]
-        # print(len(examples))                # 8
-        # print(type(batch_images[0]))        # <class 'list'>
-        # print(type(future_images[0]))       # <class 'list'>
-        # print(type(instructions[0]))        # <class 'str'>
+
+
+
+
 
         # 我们将每个样本对应的当前和未来图像组装为raw_sequence=concat[obs,future_obs,future_obs,future_obs,future_obs]
         # 而raw_sequences也是由8个这样的raw_sequence组成的列表，
         train_obs_image_size = getattr(self.config.framework, "obs_image_size", None)
-        # print(train_obs_image_size)         # None
+
         if train_obs_image_size:
             batch_images = resize_images(batch_images, target_size=train_obs_image_size)
             future_images = resize_images(future_images, target_size=train_obs_image_size)
@@ -268,11 +272,11 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             batch_images=batch_images,
             future_images=future_images,
         )
-        # print(len(raw_sequences))           # 8
-        # print(len(raw_sequences[0]))        # 5
-        # print(raw_sequences[0][0])          # <PIL.Image.Image image mode=RGB size=224x224 at 0x7FF6B20D60E0>
-        # print(condition_counts)             # [1, 1, 1, 1, 1, 1, 1, 1]
-        # print(sample_counts)                # [2, 2, 2, 2, 2, 2, 2, 2]
+
+
+
+
+
 
         # 2. 调用CosmosPredict的文本和视觉tokenizer，
         # 将每个样本的prompt编码为prompt_emb(512,100352)，将raw_sequence编码为clean_latents(16,2,28,28)，
@@ -283,15 +287,15 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         clean_latents = clean_latents.to(dtype)
         batch_size, channels, num_latents, height, width = clean_latents.shape
         device = clean_latents.device
-        # print(prompt_embeds.shape)          # torch.Size([8, 512, 100352])
-        # print(clean_latents.shape)          # torch.Size([8, 16, 2, 28, 28])
-        # print(dtype)                        # torch.bfloat16
+
+
+
         condition_mask = clean_latents.new_zeros((batch_size, 1, num_latents, height, width))
         target_mask = clean_latents.new_zeros((batch_size, 1, num_latents, 1, 1), dtype=torch.float32)
         cond_indicator = clean_latents.new_zeros((batch_size, 1, num_latents, 1, 1))
-        # print(condition_mask.shape)         # torch.Size([8, 1, 2, 28, 28])
-        # print(target_mask.shape)            # torch.Size([8, 1, 2, 1, 1])
-        # print(cond_indicator.shape)         # torch.Size([8, 1, 2, 1, 1])
+
+
+
         for batch_idx, (condition_count, sample_count) in enumerate(zip(condition_counts, sample_counts)):
             condition_count = max(1, min(int(condition_count), num_latents))
             sample_count = min(max(condition_count + 1, int(sample_count)), num_latents)
@@ -305,41 +309,41 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             device=device,
             distribution=training_cfg.get("train_time_distribution", "logitnormal"),
         )
-        # print(train_time.shape)             # torch.Size([8])
+
         flow_time = self._shift_time(train_time, shift=float(training_cfg.get("shift", 5.0)))
-        # print(flow_time.shape)              # torch.Size([8])
+
         target_time = flow_time.view(batch_size, 1, 1, 1, 1).to(device=device, dtype=clean_latents.dtype)
-        # print(target_time.shape)            # torch.Size([8, 1, 1, 1, 1])
-        # print(clean_latents.shape)          # torch.Size([8, 16, 2, 28, 28])
+
+
         noise = torch.randn_like(clean_latents)
-        # print(noise.shape)                  # torch.Size([8, 16, 2, 28, 28])
-        # print(target_time.shape)            # torch.Size([8, 1, 1, 1, 1])
+
+
         noisy_latents = clean_latents * (1.0 - target_time) + noise * target_time
-        # print(noisy_latents.shape)          # torch.Size([8, 16, 2, 28, 28])
-        # print(target_mask.shape)            # torch.Size([8, 1, 2, 1, 1])
+
+
         hidden_states = torch.where(target_mask.to(dtype=torch.bool), noisy_latents, clean_latents)
-        # print(hidden_states.shape)          # torch.Size([8, 16, 2, 28, 28])
+
 
         # 4. 对future_obs_tokens部分，计算其去噪目标target_velocity
         target_velocity = noise.float() - clean_latents.float()
-        # print(target_velocity.shape)        # torch.Size([8, 16, 2, 28, 28])
+
 
         # 5. 计算timestep和padding_mask
         cond_timestep = float(getattr(self.backbone, "_conditional_frame_timestep", 0.1))
-        # print(cond_timestep)                # 0.1
+
         timestep = clean_latents.new_zeros((batch_size, 1, num_latents, 1, 1))
-        # print(timestep.shape)               # torch.Size([8, 1, 2, 1, 1])
+
         timestep = timestep + cond_indicator.to(dtype=clean_latents.dtype) * cond_timestep
-        # print(timestep.shape)               # torch.Size([8, 1, 2, 1, 1])
+
         timestep = torch.where(target_mask.to(dtype=torch.bool), target_time.expand_as(timestep), timestep)
-        # print(timestep.shape)               # torch.Size([8, 1, 2, 1, 1])
+
 
         padding_height = int(height * getattr(self.backbone, "vae_scale_factor_spatial", 16))
         padding_width = int(width * getattr(self.backbone, "vae_scale_factor_spatial", 16))
         padding_mask = clean_latents.new_zeros((1, 1, padding_height, padding_width), dtype=dtype)
-        # print(padding_height)               # 224
-        # print(padding_width)                # 224
-        # print(padding_mask.shape)           # torch.Size([1, 1, 224, 224])
+
+
+
 
         # 7. CosmosPredict前向传播
         # 以prompt_emb(8,512,100352)和clean_latents(8,16,2,28,28)作为输入，
@@ -361,92 +365,92 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         pred = pred.sample if hasattr(pred, "sample") else pred
         if hasattr(self.backbone, "_intermediate_features"):
             self.backbone._intermediate_features.clear()
-        # print(type(self.backbone))          # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface'>
-        # print(pred.shape)                   # torch.Size([8, 16, 2, 28, 28])
+
+
 
         # 8. 计算future-image-loss
-        # print(target_mask.shape)            # torch.Size([8, 1, 2, 1, 1])
+
         loss_mask = target_mask.expand(batch_size, channels, num_latents, height, width)
-        # print(loss_mask.shape)              # torch.Size([8, 16, 2, 28, 28])
+
         future_loss = F.mse_loss(pred.float(), target_velocity, reduction="none")
-        # print(future_loss.shape)            # torch.Size([8, 16, 2, 28, 28])
+
         future_image_loss = (future_loss * loss_mask).sum() / loss_mask.sum().clamp_min(1.0)
-        # print(future_image_loss)            # tensor(0.3386, device='cuda:0', grad_fn=<DivBackward0>)
-        # print('################# CosmoPredict25_Perceiver_FutureImage._cosmos25_future_image_loss-2')
+
+
         return future_image_loss
 
     # 训练时
     # future_latent支路，self.vjepa_encoder + self.vjepa_predictor
     def _vjepa2ac_future_latent_loss(self, examples: List[dict], target_emb: torch.Tensor) -> Optional[torch.Tensor]:
-        # print('################# CosmoPredict25_Perceiver_FutureImage._vjepa2ac_future_latent_loss-1')
+
         if "future_image" not in examples[0]:
             return None
 
         # 2. 从examples中取出当前图像和未来图像，并使用VJEPA2-AC官方的transform对图像做预处理
         batch_current_images = [to_pil_preserve(example["image"]) for example in examples]
         batch_future_images = [to_pil_preserve(example["future_image"]) for example in examples]
-        # print(len(examples))                    # 8
+
         clips_list = []
         for current_images, future_images in zip(batch_current_images, batch_future_images):
             current_seq = self._as_sequence(current_images)
             future_seq = self._as_sequence(future_images)
-            # print(len(current_seq))             # 1
-            # print(len(future_seq))              # 1
+
+
             current_np = np.array(current_seq[0])
             future_np = np.array(future_seq[0])
-            # print(current_np.shape)             # (224, 224, 3)
-            # print(future_np.shape)              # (224, 224, 3)
+
+
             clip_np = np.stack([current_np, future_np], axis=0)
-            # print(clip_np.shape)                # (2, 224, 224, 3)
+
             clip_tensor = self._vjepa2_transform(clip_np)
-            # print(clip_tensor.shape)            # torch.Size([3, 2, 256, 256])
+
             clips_list.append(clip_tensor)
         clips = torch.stack(clips_list, dim=0).to(self.vjepa_encoder.patch_embed.proj.weight.device)
-        # print(clips.shape)                      # torch.Size([8, 3, 2, 256, 256])
+
         B, C, T, H, W = clips.size()
-        # print(clips.shape)                      # torch.Size([8, 3, 2, 256, 256])
+
         c = clips.permute(0, 2, 1, 3, 4).flatten(0, 1).unsqueeze(2).repeat(1, 1, 2, 1, 1).to(torch.bfloat16)
-        # print(c.shape)                          # torch.Size([16, 3, 2, 256, 256])
-        
+
+
         # 3. self.vjepa_encoder推理时使用b16
         # 这是仿照self._cosmos25_future_image_loss中，当self.backbone作为编码器前向推理时使用bf16
         crop_size = 256
         tokens_per_frame = int((crop_size // self.vjepa_encoder.patch_size) ** 2)
         # 仿照原始代码对self.backbone的处理，用bf16 autocast包裹vjepa_encoder
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
-            # print(type(self.vjepa_encoder))     # <class 'src.models.vision_transformer.VisionTransformer'>
+
             h = self.vjepa_encoder(c)
-            # print(h.shape)                      # torch.Size([16, 256, 1408])
+
             h = h.view(B, T, -1, h.size(-1)).flatten(1, 2)
-            # print(h.shape)                      # torch.Size([8, 512, 1408])
+
             h = F.layer_norm(h, (h.size(-1),))
-            # print(h.shape)                      # torch.Size([8, 512, 1408])
+
 
         # 4. 从h中分离出current_tokens和future_tokens
         current_tokens = h[:, :tokens_per_frame]
         future_tokens = h[:, tokens_per_frame:]
-        # print(current_tokens.shape)             # torch.Size([8, 256, 1408])
-        # print(future_tokens.shape)              # torch.Size([8, 256, 1408])
+
+
 
         # 5. 从examples中取出current_state，参考predict_action()中的实现
         current_state = [example["state"] for example in examples] if "state" in examples[0] else None
-        # print(len(current_state))               # 8
-        # print(current_state[0].shape)           # (1, 64)
+
+
         current_state = (torch.from_numpy(np.array(current_state)).to(current_tokens.device, dtype=current_tokens.dtype))
-        # print(current_state.shape)              # torch.Size([8, 1, 64])
+
         current_state = self._align_state_dim(current_state)
-        # print(current_state.shape)              # torch.Size([8, 1, 64])
+
 
         # 6. self.vjepa_predictor推理时使用fp32
         # 这是仿照CosmoPredict2Perceiver.forward()中，当self.action_model生成action前向推理时使用fp32
         with torch.autocast("cuda", dtype=torch.float32):
             # 通过projector映射维度
-            # print(current_state.shape)              # torch.Size([8, 1, 64])
-            # print(target_emb.shape)                 # torch.Size([8, 64, 1024])
+
+
             current_state_emb = self.state_projector(current_state)
             target_emb_proj = self.action_projector(target_emb)
-            # print(current_state_emb.shape)          # torch.Size([8, 1, 1024])
-            # print(target_emb_proj.shape)            # torch.Size([8, 64, 1024])
+
+
 
             # 7. 调用self.vjepa_predictor预测future_tokens
             future_tokens_pred = self.vjepa_predictor.forward_for_WAM_VJEPA2AC(
@@ -454,24 +458,24 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
                 target_emb=target_emb_proj,
                 state_emb=current_state_emb,
             )
-            # print(type(self.vjepa_predictor))       # <class 'src.models.ac_predictor.VisionTransformerPredictorAC'>
-            # print(current_tokens.shape)             # torch.Size([8, 256, 1408])
-            # print(target_emb_proj.shape)            # torch.Size([8, 64, 1024])
-            # print(current_state_emb.shape)          # torch.Size([8, 1, 1024])
-            # print(future_tokens_pred.shape)         # torch.Size([8, 256, 1408])
+
+
+
+
+
 
             # 8. 计算future_latent_loss
             future_latent_loss = F.smooth_l1_loss(future_tokens_pred, future_tokens)
-        # print(future_latent_loss)               # tensor(0.3229, device='cuda:0', grad_fn=<SmoothL1LossBackward0>)
 
-        # print('################# CosmoPredict25_Perceiver_FutureImage._vjepa2ac_future_latent_loss-2')
+
+
         return future_latent_loss
 
     # 训练时
     # 生成future_image、future_latent和action
     # 最终返回的是total_loss=action_loss+future_image_loss*loss_weight+future_latent_loss*loss_weight
     def forward(self, examples: List[dict] = None, **kwargs) -> dict:
-        # print('################# CosmoPredict25_Perceiver_FutureImage.forward-1')
+
         output = {}
         future_image_cfg = self._future_image_training_cfg()
         future_latent_cfg = self._future_latent_training_cfg()
@@ -482,11 +486,11 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         total_loss = perceiver_action_loss
         # 仿照原始代码对action_model输出target_emb的处理，不强制转换精度
         # target_emb在float32 autocast内产生，后续_vjepa2ac_future_latent_loss也在float32 autocast内使用
-        # print(target_emb.shape)                             # torch.Size([8, 64, 1024])
+
 
         # 2. future_image支路（根据enabled配置决定是否执行）
-        # print(future_image_cfg.get("enabled"))              # False
-        # print(future_image_cfg.get("loss_weight"))          # 1.0
+
+
         if self._as_bool(future_image_cfg.get("enabled")):
             future_image_loss = self._cosmos25_future_image_loss(examples)
             if future_image_loss is not None:
@@ -495,8 +499,8 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
                 total_loss = total_loss + future_image_loss * future_image_loss_weight
 
         # 3. future_latent支路（根据enabled配置决定是否执行）
-        # print(future_latent_cfg.get("enabled"))             # True
-        # print(future_latent_cfg.get("loss_weight"))         # 1.0
+
+
         if self._as_bool(future_latent_cfg.get("enabled")):
             future_latent_loss = self._vjepa2ac_future_latent_loss(examples, target_emb)
             if future_latent_loss is not None:
@@ -506,8 +510,8 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
 
         output["action_loss"] = total_loss
 
-        # print(output)
-        # print('################# CosmoPredict25_Perceiver_FutureImage.forward-2')
+
+
         return output
 
     def _get_future_image_generation_cfg(self, kwargs: dict) -> dict:
@@ -524,6 +528,7 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         for key in (
             "enabled",
             "num_frames",
+            "allow_temporal_extrapolation",
             "num_inference_steps",
             "guidance_scale",
             "output_type",
@@ -551,18 +556,23 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         height = cfg.pop("height", getattr(self.backbone, "_height", 704))
         width = cfg.pop("width", getattr(self.backbone, "_width", 1280))
         heights = self._resolve_generation_size_values(batch_images, height, width)
+        trained_frames = max(len(self._as_sequence(images)) for images in batch_images) + int(self.backbone.vae_scale_factor_temporal)
+        num_frames = validate_generation_length(
+            cfg.pop("num_frames", trained_frames), trained_frames,
+            self._as_bool(cfg.pop("allow_temporal_extrapolation", False)),
+        )
         generation_inputs = {
             "prompt": instructions,
             "height": heights[0],
             "width": heights[1],
-            "num_frames": cfg.pop("num_frames", 93),
+            "num_frames": num_frames,
             "num_inference_steps": cfg.pop("num_inference_steps", 36),
             "guidance_scale": cfg.pop("guidance_scale", 7.0),
             "output_type": cfg.pop("output_type", "pil"),
             "return_dict": True,
             "max_sequence_length": cfg.pop("max_sequence_length", 512),
             "conditional_frame_timestep": cfg.pop("conditional_frame_timestep", 0.1),
-            "num_latent_conditional_frames": cfg.pop("num_latent_conditional_frames", 2),
+            "num_latent_conditional_frames": cfg.pop("num_latent_conditional_frames", 1),
         }
 
         negative_prompt = cfg.pop("negative_prompt", None)
@@ -708,15 +718,16 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
 
     # 推理时
     # future_image支路，self.backbone.generate()
+    @isolated_visualization
     def _generate_future_images(self, generation_inputs: dict, batch_size: int, max_samples: int, future_frame_index: int, return_full_video: bool):
-        # print('################# CosmoPredict25_Perceiver_FutureImage._generate_future_images-1')
+
         if max_samples is None or max_samples < 0:
             sample_count = batch_size
         else:
             sample_count = min(batch_size, max(0, int(max_samples)))
-        # print(sample_count)         # 1
 
-        # print(generation_inputs)
+
+
         """
         {
             'prompt': [
@@ -755,12 +766,12 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
         for sample_idx in range(sample_count):
 
             # 1. CosmosPredict：构建输入
-            # print(sample_idx)       # 0
+
             single_inputs = {
                 key: self._slice_generation_value(key, value, sample_idx, batch_size)
                 for key, value in generation_inputs.items()
             }
-            # print(single_inputs)
+
             """
             {
                 'prompt': ['Subtask: unlocked_waist: pick the bell pepper from the plate and place it in the cardboard box.'], 
@@ -780,50 +791,51 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
 
             # 2. CosmosPredict：前向推理
             generation_output = self.backbone.generate(**single_inputs)
-            # print(type(self.backbone))      # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface'>
-            # print(type(generation_output))  # <class 'diffusers.pipelines.cosmos.pipeline_output.CosmosPipelineOutput'>
-            # print(future_frame_index)       # -1
-            # print(return_full_video)        # False
+
+
+
+
             sample_images = self._select_future_images(
                 generation_output,
                 future_frame_index=future_frame_index,
                 return_full_video=return_full_video,
             )
-            # print(sample_images)            # [<PIL.Image.Image image mode=RGB size=224x224 at 0x7F96D7423220>]
+
             if isinstance(sample_images, (list, tuple)):
                 pred_future_images.extend(sample_images)
             else:
                 pred_future_images.append(sample_images)
-        # print('################# CosmoPredict25_Perceiver_FutureImage._generate_future_images-2')
+
         return pred_future_images
 
     # 推理时
     # action支路，self.backbone.build_inputs()、self.backbone.forward()、self.action_model.predict_action()
+    @seeded_inference
     @torch.inference_mode()
     def predict_action(self, examples: List[dict], **kwargs) -> dict:
-        # print('################# CosmoPredict25_Perceiver_FutureImage.predict_action-1')
+
         if type(examples) is not list:
             examples = [examples]
 
         # 1. CosmosPredict：构建输入
         batch_images = [to_pil_preserve(example["image"]) for example in examples]
         instructions = [example["lang"] for example in examples]
-        # print(len(examples))            # 8
+
 
         train_obs_image_size = getattr(self.config.framework, "obs_image_size", None)
-        # print(train_obs_image_size)     # None
+
         if train_obs_image_size:
             batch_images = resize_images(batch_images, target_size=train_obs_image_size)
 
         wm_inputs = self.backbone.build_inputs(images=batch_images, instructions=instructions)
-        # print(type(self.backbone))      # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface'>
-        # print(wm_inputs.keys())         # dict_keys(['hidden_states', 'timestep', 'encoder_hidden_states', 'condition_mask', 'padding_mask', '_is_wm_input'])
-        # print(wm_inputs['hidden_states'].shape)             # torch.Size([8, 16, 1, 28, 28])
-        # print(wm_inputs['timestep'].shape)                  # torch.Size([8, 1, 1, 1, 1])
-        # print(wm_inputs['encoder_hidden_states'].shape)     # torch.Size([8, 512, 100352])
-        # print(wm_inputs['condition_mask'].shape)            # torch.Size([8, 1, 1, 28, 28])
-        # print(wm_inputs['padding_mask'].shape)              # torch.Size([1, 1, 224, 224])
-        # print(wm_inputs['_is_wm_input'])                    # True
+
+
+
+
+
+
+
+
 
         # 2. CosmosPredict：前向推理
         # 这里的CosmosPredict起到了一个编码器的作用，将输入的当前观测和prompt编码为vl-tokens
@@ -834,8 +846,8 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
                 return_dict=True,
             )
             last_hidden = wm_outputs.hidden_states[-1]
-            # print(type(wm_outputs))         # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface.forward.<locals>._WMOutput'>
-            # print(last_hidden.shape)        # torch.Size([8, 196, 2048])
+
+
 
         # 3. ActionHead：构建输入
         state = [example["state"] for example in examples] if "state" in examples[0] else None
@@ -844,9 +856,9 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             if state is not None
             else None
         )
-        # print(state.shape)                  # torch.Size([8, 1, 64])
+
         state = self._align_state_dim(state)
-        # print(state.shape)                  # torch.Size([8, 1, 64])
+
 
         embodiment_tag = [example["embodiment_tag"] for example in examples] if "embodiment_tag" in examples[0] else None
         embodiment_tag = (
@@ -854,31 +866,31 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             if embodiment_tag is not None
             else None
         )
-        # print(embodiment_tag.shape)         # torch.Size([8])
+
         if embodiment_tag is not None:
             embodiment_tag = embodiment_tag.view(-1)
-        # print(embodiment_tag.shape)         # torch.Size([8])
+
 
         # 4. ActionHead：前向推理
         with torch.autocast("cuda", dtype=torch.float32):
             pred_actions = self.action_model.predict_action(last_hidden, state, embodiment_tag)
-            # print(type(self.action_model))  # <class 'starVLA.model.modules.action_model.PerceiverHead.FlowmatchingActionHead'>
-            # print(last_hidden.shape)        # torch.Size([8, 196, 2048])
-            # print(state.shape)              # torch.Size([8, 1, 64])
-            # print(embodiment_tag.shape)     # torch.Size([8])
-            # print(pred_actions.shape)       # torch.Size([8, 16, 32])
+
+
+
+
+
         output = {"normalized_actions": pred_actions.detach().cpu().numpy()}
 
         # 5. 若enabled为True，只生成action即可返回；若enabled为False，则需要
         generation_cfg = self._get_future_image_generation_cfg(kwargs)
         is_enabled = generation_cfg.pop("enabled", True)
-        # print(is_enabled)                   # True
-        if not bool(is_enabled):
-            # print('is_enabled is False')
-            # print('################# CosmoPredict25_Perceiver_FutureImage.predict_action-2')
+
+        if not self._as_bool(is_enabled):
+
+
             return output
 
-        return_full_video = bool(generation_cfg.pop("return_full_video", False))
+        return_full_video = self._as_bool(generation_cfg.pop("return_full_video", False))
         future_frame_index = int(generation_cfg.pop("future_frame_index", -1))
         max_samples = int(generation_cfg.pop("max_samples", 1))
         generation_inputs = self._build_generation_inputs(batch_images, instructions, generation_cfg)
@@ -889,5 +901,5 @@ class CosmoPredict25_Perceiver_VJEPA2AC(CosmoPredict25_Perceiver):
             future_frame_index=future_frame_index,
             return_full_video=return_full_video,
         )
-        # print('################# CosmoPredict25_Perceiver_FutureImage.predict_action-2')
+
         return output

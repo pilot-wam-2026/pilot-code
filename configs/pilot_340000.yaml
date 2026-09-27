@@ -1,0 +1,116 @@
+datasets:
+  vla_data:
+    data_mix: robocasa_teleop_ee
+    data_root_dir: ${oc.env:PILOT_DATA_ROOT}
+    dataset_py: lerobot_datasets
+    delete_pause_frame: false
+    per_device_batch_size: 14
+    video_backend: decord
+    include_state: true
+    num_workers: 0
+    persistent_workers: false
+framework:
+  action_model:
+    action_dim: 32
+    action_horizon: 16
+    action_model_type: DiT-B
+    add_pos_embed: true
+    diffusion_model_cfg:
+      cross_attention_dim: 2048
+      dropout: 0.2
+      final_dropout: true
+      interleave_self_attention: true
+      norm_type: ada_norm
+      num_layers: 16
+      output_dim: 1024
+      positional_embeddings: null
+    future_action_window_size: 15
+    hidden_size: 1024
+    max_seq_len: 1024
+    noise_beta_alpha: 1.5
+    noise_beta_beta: 1.0
+    noise_s: 0.999
+    num_inference_timesteps: 20
+    num_target_vision_tokens: 64
+    num_timestep_buckets: 1000
+    past_action_window_size: 0
+    state_dim: 64
+    use_category_specific: false
+  future_image_generation:
+    conditional_frame_timestep: 0.1
+    conditioning_mode: auto
+    enabled: true
+    future_frame_index: -1
+    guidance_scale: 7.0
+    height: 224
+    max_samples: 1
+    max_sequence_length: 512
+    negative_prompt: null
+    num_frames: 5
+    num_inference_steps: 20
+    num_latent_conditional_frames: 1
+    output_type: pil
+    return_full_video: false
+    width: 224
+  future_image_training:
+    enabled: true
+    loss_weight: 1.0
+    shift: 5.0
+    train_time_distribution: logitnormal
+  future_latent_training:
+    enabled: true
+    loss_weight: 0.1
+    shift: 5.0
+    train_time_distribution: logitnormal
+  name: CosmoPredict25PerceiverVJEPA2AC
+  obs_image_size: null
+  qwenvl:
+    base_vlm: ${oc.env:PILOT_COSMOS_ROOT}
+    vl_hidden_dim: 2048
+  vjepa2_ac:
+    pretrained: ${oc.env:PILOT_VJEPA_CHECKPOINT}
+    repo_dir: ${oc.env:PILOT_ROOT}/starVLA/facebookresearch_vjepa2_main
+  world_model:
+    base_wm: ${oc.env:PILOT_COSMOS_ROOT}
+    conditional_frame_timestep: 0.1
+    extract_layers:
+    - -1
+    height: 224
+    revision: diffusers/base/post-trained
+    width: 224
+    latent_normalization: legacy
+run_id: pilot
+run_root_dir: ${oc.env:PILOT_OUTPUT_ROOT}
+seed: 42
+trainer:
+  eval_interval: 500
+  freeze_modules: null
+  gradient_accumulation_steps: 1
+  gradient_clipping: 1.0
+  is_resume: false
+  learning_rate:
+    action_model: 5.0e-05
+    action_projector: 5.0e-05
+    base: 1.0e-05
+    qwen_vl_interface: 1.0e-05
+    state_projector: 5.0e-05
+    vjepa_predictor: 5.0e-05
+  logging_frequency: 500
+  lr_scheduler_type: cosine_with_min_lr
+  max_train_steps: 400000
+  num_warmup_steps: 2000
+  optimizer:
+    betas:
+    - 0.9
+    - 0.999
+    eps: 1.0e-08
+    weight_decay: 0.1
+  repeated_diffusion_steps: 4
+  save_interval: 10000
+  scheduler_specific_kwargs:
+    min_lr: 2.0e-07
+  stateful_dataloader: true
+  save_training_state: true
+  deterministic_algorithms: true
+wandb_entity: null
+wandb_project: pilot

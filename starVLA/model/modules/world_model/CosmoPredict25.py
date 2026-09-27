@@ -14,6 +14,7 @@ from typing import Optional
 import numpy as np
 import torch
 import torch.nn as nn
+from .latent_contract import configure_coordinates
 
 from starVLA.training.trainer_utils import initialize_overwatch
 
@@ -44,7 +45,7 @@ class _CosmoPredict25_Interface(nn.Module):
     """World model wrapper for Cosmos-Predict2.5 diffusers checkpoints."""
 
     def __init__(self, config: Optional[dict] = None, **kwargs):
-        # print('################# _CosmoPredict25_Interface-1')
+
         super().__init__()
 
         wm_cfg = config.framework.get("world_model", {})
@@ -53,10 +54,10 @@ class _CosmoPredict25_Interface(nn.Module):
         attn_implementation = wm_cfg.get("attn_implementation", None)
         enable_safety_checker = bool(wm_cfg.get("enable_safety_checker", False))
         self.config = config
-        # print(model_name)                       # /path/to/workspace/code/starVLA/playground/Pretrained_models/Cosmos-Predict2.5-2B-Post-Trained
-        # print(revision)                         # diffusers/base/post-trained
-        # print(attn_implementation)              # None
-        # print(enable_safety_checker)            # False
+
+
+
+
 
         if self._looks_like_native_checkpoint(model_name):
             raise ValueError(
@@ -92,7 +93,7 @@ class _CosmoPredict25_Interface(nn.Module):
         )
         self.pipe = Cosmos2_5_PredictBasePipeline.from_pretrained(model_name, **load_kwargs)
         self.pipe.set_progress_bar_config(disable=True)
-        # print(type(self.pipe))                  # <class 'diffusers.pipelines.cosmos.pipeline_cosmos2_5_predict.Cosmos2_5_PredictBasePipeline'>
+
 
         self.transformer = self.pipe.transformer
         self.tokenizer = self.pipe.tokenizer
@@ -100,21 +101,25 @@ class _CosmoPredict25_Interface(nn.Module):
         self.vae = self.pipe.vae
         self.scheduler = self.pipe.scheduler
         self.video_processor = self.pipe.video_processor
-        # print(type(self.transformer))           # <class 'diffusers.models.transformers.transformer_cosmos.CosmosTransformer3DModel'>
-        # print(type(self.tokenizer))             # <class 'transformers.models.qwen2.tokenization_qwen2.Qwen2Tokenizer'>
-        # print(type(self.text_encoder))          # <class 'transformers.models.qwen2_5_vl.modeling_qwen2_5_vl.Qwen2_5_VLForConditionalGeneration'>
-        # print(type(self.vae))                   # <class 'diffusers.models.autoencoders.autoencoder_kl_wan.AutoencoderKLWan'>
-        # print(type(self.scheduler))             # <class 'diffusers.schedulers.scheduling_unipc_multistep.UniPCMultistepScheduler'>
-        # print(type(self.video_processor))       # <class 'diffusers.video_processor.VideoProcessor'>
+
+
+
+
+
+
 
         self.vae_scale_factor_spatial = self.pipe.vae_scale_factor_spatial
         self.vae_scale_factor_temporal = self.pipe.vae_scale_factor_temporal
-        self.latents_mean = self.pipe.latents_mean
-        self.latents_std = self.pipe.latents_std
-        # print(self.vae_scale_factor_spatial)    # 8
-        # print(self.vae_scale_factor_temporal)   # 4
-        # print(self.latents_mean.shape)          # torch.Size([1, 16, 1, 1, 1])
-        # print(self.latents_std.shape)           # torch.Size([1, 16, 1, 1, 1])
+        self.latent_normalization = wm_cfg.get("latent_normalization", "canonical")
+        mean, divisor, self.native_latent_convention = configure_coordinates(
+            self.pipe, self.latent_normalization
+        )
+        self.register_buffer("latents_mean", mean, persistent=False)
+        self.register_buffer("latents_std", divisor, persistent=False)
+
+
+
+
 
         # 冻结self.vae和self.text_encoder
         self.vae.requires_grad_(False)
@@ -140,7 +145,7 @@ class _CosmoPredict25_Interface(nn.Module):
         self._max_sequence_length = wm_cfg.get("max_sequence_length", 512)
         self._conditional_frame_timestep = wm_cfg.get("conditional_frame_timestep", 0.1)
         self._register_hooks()
-        # print('################# _CosmoPredict25_Interface-2')
+
 
     @staticmethod
     def _is_auto_size(value) -> bool:
@@ -324,18 +329,18 @@ class _CosmoPredict25_Interface(nn.Module):
 
     # 生成action时，将当前obs和prompt打包为inputs
     def build_inputs(self, images, instructions, **kwargs):
-        # print('################# _CosmoPredict25_Interface.build_inputs-1')
+
         assert len(images) == len(instructions)
 
         # 1. 编码当前obs和prompt
         prompt_embeds = self._encode_text(instructions)
-        # print(len(instructions))                    # 8
-        # print(prompt_embeds.shape)                  # torch.Size([8, 512, 100352])
+
+
         latents, cond_frame_counts, counts_are_latent_frames = self._encode_images(images)
-        # print(len(images))                          # 8
-        # print(latents.shape)                        # torch.Size([8, 16, 1, 28, 28])
-        # print(cond_frame_counts)                    # [1, 1, 1, 1, 1, 1, 1, 1]
-        # print(counts_are_latent_frames)             # False
+
+
+
+
 
         batch_size = latents.shape[0]
         device = latents.device
@@ -352,21 +357,21 @@ class _CosmoPredict25_Interface(nn.Module):
                 n_cond_latent = (n_cond - 1) // self.vae_scale_factor_temporal + 1
             condition_mask[i, :, :n_cond_latent] = 1.0
             cond_indicator[i, :, :n_cond_latent] = 1.0
-        # print(condition_mask.shape)                 # torch.Size([8, 1, 1, 28, 28])
-        # print(cond_indicator.shape)                 # torch.Size([8, 1, 1, 1, 1])
+
+
 
         cond_timestep = torch.ones_like(cond_indicator) * self._conditional_frame_timestep
-        # print(self._conditional_frame_timestep)     # 0.1
-        # print(cond_timestep.shape)                  # torch.Size([8, 1, 1, 1, 1])
+
+
         timestep = cond_indicator * cond_timestep
-        # print(timestep.shape)                       # torch.Size([8, 1, 1, 1, 1])
-        # print(self.vae_scale_factor_spatial)        # 8
+
+
         padding_height = int(h_lat * self.vae_scale_factor_spatial)
         padding_width = int(w_lat * self.vae_scale_factor_spatial)
         padding_mask = latents.new_zeros((1, 1, padding_height, padding_width), dtype=dtype)
-        # print(padding_mask.shape)                   # torch.Size([1, 1, 224, 224])
 
-        # print('################# _CosmoPredict25_Interface.build_inputs-2')
+
+
         return {
             "hidden_states": latents.to(dtype),
             "timestep": timestep.to(dtype),
@@ -378,14 +383,14 @@ class _CosmoPredict25_Interface(nn.Module):
 
     # 生成action时，接受obs和prompt作为inputs，并将其编码为vl-tokens
     def forward(self, **kwargs):
-        # print('################# _CosmoPredict25_Interface.forward-1')
+
         kwargs.pop("_is_wm_input", None)
         kwargs.pop("output_hidden_states", None)
         kwargs.pop("return_dict", None)
         kwargs.pop("output_attentions", None)
 
         self._intermediate_features.clear()
-        
+
         # 3. 调用self.backbone.transformer()
         # 利用hook机制，将CosmosPredict前向推理的中间变量存储在列表self._intermediate_features中，
         with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -397,19 +402,19 @@ class _CosmoPredict25_Interface(nn.Module):
                 padding_mask=kwargs.get("padding_mask", None),
                 return_dict=False,
             )
-            # print(type(self.transformer))           # <class 'diffusers.models.transformers.transformer_cosmos.CosmosTransformer3DModel'>
-            # print(len(dit_output))                  # 1
-            # print(dit_output[0].shape)              # torch.Size([8, 16, 1, 28, 28])
+
+
+
 
         # 若self._intermediate_features非空，则将self._intermediate_features中的表征作为vl-tokens
         extracted = []
-        # print(len(self._intermediate_features))     # 1
+
         for feat in self._intermediate_features:
-            # print(feat.shape)                       # torch.Size([8, 196, 2048])
+
             if feat.dim() == 5:
                 batch, channels, frames, height, width = feat.shape
                 feat = feat.permute(0, 2, 3, 4, 1).reshape(batch, frames * height * width, channels)
-            # print(feat.shape)                       # torch.Size([8, 196, 2048])
+
             extracted.append(feat)
 
         # 若self._intermediate_features为空，则将最后一层输出的表征作为vl-tokens
@@ -425,7 +430,7 @@ class _CosmoPredict25_Interface(nn.Module):
                 self.hidden_states = hidden_states_tuple
                 self.loss = loss
 
-        # print('################# _CosmoPredict25_Interface.forward-2')
+
         return _WMOutput(hidden_states_tuple=tuple(extracted))
 
     # 生成future-image时，接受当前obs和prompt以及加噪的未来obs，生成降噪后的未来obs

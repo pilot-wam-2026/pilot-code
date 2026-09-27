@@ -352,15 +352,15 @@ class VideoResizePad(VideoTransform):
         """
         interpolation = self._get_interpolation(self.interpolation, self.backend)
         N, C, H, W = frames.shape
-        
+
         # Calculate scaling factor (scale longest edge to target size)
         scale = self.size / max(H, W)
         new_h = int(H * scale)
         new_w = int(W * scale)
-        
+
         # Resize
         resized = T.Resize((new_h, new_w), interpolation=interpolation, antialias=self.antialias)(frames)
-        
+
         # Calculate padding
         pad_h = self.size - new_h
         pad_w = self.size - new_w
@@ -368,12 +368,12 @@ class VideoResizePad(VideoTransform):
         pad_bottom = pad_h - pad_top
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left
-        
+
         # Pad (pad order is: left, right, top, bottom)
         padded = T.Pad([pad_left, pad_top, pad_right, pad_bottom], fill=self.fill_value)(resized)
-        
+
         return padded
-        
+
 class VideoResize(VideoTransform):
     height: int = Field(..., description="The height of the resize")
     width: int = Field(..., description="The width of the resize")

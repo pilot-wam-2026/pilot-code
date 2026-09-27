@@ -218,7 +218,7 @@ class VisionTransformerPredictorAC(nn.Module):
     def forward(self, x, actions, states, extrinsics=None):
         # print('############ VisionTransformerPredictorAC.forward-1')
         print('Warning: this function should not used in WAM-VJEPA !!!!!! '
-        '(in /path/to/workspace/users/anonymous/projects/WM4A/starVLA/facebookresearch_vjepa2_main/src/models/ac_predictor.py)')
+        '(in /path/to/local-resource)')
 
         # print(x.shape)                  # torch.Size([125, 256, 1408])
         x = self.predictor_embed(x)

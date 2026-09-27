@@ -73,29 +73,29 @@ class ActionEncoder(nn.Module):
         self.pos_encoding = SinusoidalPositionalEncoding(hidden_size)
 
     def forward(self, actions, timesteps):
-        # print('################# ActionEncoder.forward-1')
+
         B, T, _ = actions.shape
 
-        # print(timesteps.shape)      # torch.Size([32])
+
         if timesteps.dim() == 1 and timesteps.shape[0] == B:
             timesteps = timesteps.unsqueeze(1).expand(-1, T)
         else:
             raise ValueError("Expected `timesteps` to have shape (B,) so we can replicate across T.")
-        # print(timesteps.shape)      # torch.Size([32, 16])
-        tau_emb = self.pos_encoding(timesteps).to(dtype=actions.dtype)
-        # print(tau_emb.shape)        # torch.Size([32, 16, 768])
 
-        # print(actions.shape)        # torch.Size([32, 16, 32])
+        tau_emb = self.pos_encoding(timesteps).to(dtype=actions.dtype)
+
+
+
         a_emb = self.layer1(actions)
-        # print(a_emb.shape)          # torch.Size([32, 16, 768])
+
 
         x = torch.cat([a_emb, tau_emb], dim=-1)
-        # print(x.shape)              # torch.Size([32, 16, 1536])
+
         x = swish(self.layer2(x))
-        # print(x.shape)              # torch.Size([32, 16, 768])
+
         x = self.layer3(x)
-        # print(x.shape)              # torch.Size([32, 16, 768])
-        # print('################# ActionEncoder.forward-2')
+
+
         return x
 
 
@@ -213,7 +213,7 @@ class FlowmatchingActionHead(nn.Module):
     """Original FlowmatchingActionHead using standard MLP encoders and decoders."""
 
     def __init__(self, full_config):
-        # print('################# FlowmatchingActionHead-1')
+
         super().__init__()
         config = full_config.framework.action_model
         self.hidden_size = config.hidden_size
@@ -225,69 +225,69 @@ class FlowmatchingActionHead(nn.Module):
         diffusion_model_cfg = {**action_model_cfg, **diffusion_model_cfg}
         vl_input_dim = diffusion_model_cfg.get('cross_attention_dim', 2048)
         output_dim=diffusion_model_cfg['output_dim']
-        # print(self.hidden_size)             # 1024
-        # print(self.input_embedding_dim)     # 768
-        # print(vl_input_dim)                 # 2048
-        # print(output_dim)                   # 1024
+
+
+
+
 
         action_cfg = TimeAwareActionHead_Config(
-            action_dim=self.input_embedding_dim, 
-            vl_input_dim=vl_input_dim, 
+            action_dim=self.input_embedding_dim,
+            vl_input_dim=vl_input_dim,
             output_dim=output_dim,
             num_target_vision_tokens=config.num_target_vision_tokens,
         )
         self.model = TimeAwareActionHead(config=action_cfg)
-        # print(type(self.model))                 # <class 'starVLA.model.modules.action_model.time_aware_action_head.TimeAwareActionHead'>
+
 
         self.action_dim = config.action_dim
         self.action_horizon = config.future_action_window_size + 1
         self.num_inference_timesteps = config.num_inference_timesteps
-        # print(self.action_dim)                  # 32
-        # print(self.action_horizon)              # 16
-        # print(self.num_inference_timesteps)     # 20
+
+
+
 
         self.state_encoder = MLP(
             input_dim=config.state_dim,
             hidden_dim=self.hidden_size,
             output_dim=self.input_embedding_dim,
         ) if config.state_dim else None
-        # print(config.state_dim)                 # 64
-        # print(self.hidden_size)                 # 1024
-        # print(self.input_embedding_dim)         # 768
+
+
+
 
         self.action_encoder = ActionEncoder(
             action_dim=config.action_dim,
             hidden_size=self.input_embedding_dim,
         )
-        # print(config.action_dim)                # 32
-        # print(self.input_embedding_dim)         # 768
+
+
 
         self.action_decoder = MLP(
             input_dim=self.model.config.output_dim,
             hidden_dim=self.hidden_size,
             output_dim=self.action_dim,
         )
-        # print(self.model.config.output_dim)     # 1024
-        # print(self.hidden_size)                 # 1024
-        # print(self.action_dim)                  # 32
+
+
+
 
         self.future_tokens = nn.Embedding(config.num_target_vision_tokens, self.input_embedding_dim)
         nn.init.normal_(self.future_tokens.weight, mean=0.0, std=0.02)
-        # print(config.num_target_vision_tokens)  # 64
-        # print(self.input_embedding_dim)         # 768
+
+
 
         if config.add_pos_embed:
             self.position_embedding = nn.Embedding(config.max_seq_len, self.input_embedding_dim)
             nn.init.normal_(self.position_embedding.weight, mean=0.0, std=0.02)
-        # print(config.add_pos_embed)             # True
-        # print(config.max_seq_len)               # 1024
-        # print(self.input_embedding_dim)         # 768
+
+
+
 
         self.beta_dist = Beta(config.noise_beta_alpha, config.noise_beta_beta)
         self.num_timestep_buckets = config.num_timestep_buckets
         self.config = config
-        # print(self.num_timestep_buckets)        # 1000
-        # print('################# FlowmatchingActionHead-2')
+
+
 
     def sample_time(self, batch_size, device, dtype):
         sample = self.beta_dist.sample([batch_size]).to(device, dtype=dtype)
@@ -296,39 +296,39 @@ class FlowmatchingActionHead(nn.Module):
     def prepare_input(self, batch: dict) -> BatchFeature:
         return BatchFeature(data=batch)
 
-    def forward(self, 
-                vl_embs: torch.Tensor, actions: torch.Tensor, state: torch.Tensor = None, 
+    def forward(self,
+                vl_embs: torch.Tensor, actions: torch.Tensor, state: torch.Tensor = None,
                 embodiment_tag: torch.Tensor = None, encoder_attention_mask=None, action_mask=None, use_vjepa2ac=False, repeated_diffusion_steps=-1
                 ):
-        # print('################# FlowmatchingActionHead.forward-1')
+
         device = vl_embs.device
 
         # 1. 对action加噪得到noisy_trajectory，并生成降噪目标velocity
         noise = torch.randn(actions.shape, device=actions.device, dtype=actions.dtype)
-        # print(noise.shape)              # torch.Size([32, 16, 32])
+
         t = self.sample_time(actions.shape[0], device=actions.device, dtype=actions.dtype)
-        # print(t.shape)                  # torch.Size([32])
+
         t = t[:, None, None]
-        # print(t.shape)                  # torch.Size([32, 1, 1])
+
         noisy_trajectory = (1 - t) * noise + t * actions
-        # print(noisy_trajectory.shape)   # torch.Size([32, 16, 32])
+
         velocity = actions - noise
-        # print(velocity.shape)           # torch.Size([32, 16, 32])
+
 
         # 2. 编码state
         state_features = self.state_encoder(state) if state is not None else None
-        # print(state.shape)              # torch.Size([32, 1, 64])
-        # print(state_features.shape)     # torch.Size([32, 1, 768])
+
+
 
         # 3. 将t离散化并，对noised_action做时间编码
         t_discretized = (t[:, 0, 0] * self.num_timestep_buckets).long()
-        # print(self.num_timestep_buckets)        # 1000
-        # print(t_discretized.shape)      # torch.Size([32])
+
+
         action_features = self.action_encoder(noisy_trajectory, t_discretized)
-        # print(action_features.shape)    # torch.Size([32, 16, 768])
+
 
         # 4. 位置编码
-        # print(self.config.add_pos_embed)        # True
+
         if self.config.add_pos_embed:
             pos_ids = torch.arange(action_features.shape[1], dtype=torch.long, device=device)
             pos_embs = self.position_embedding(pos_ids).unsqueeze(0)
@@ -336,11 +336,11 @@ class FlowmatchingActionHead(nn.Module):
 
         # 5. 将state-token、future-tokens和noised-action-tokens拼接得到sa-tokens
         future_tokens = self.future_tokens.weight.unsqueeze(0).expand(action_features.shape[0], -1, -1)
-        # print(self.future_tokens.weight.shape)  # torch.Size([64, 768])
-        # print(future_tokens.shape)              # torch.Size([32, 64, 768])
+
+
         sa_embs = torch.cat((state_features, future_tokens, action_features), dim=1) \
             if state_features is not None else torch.cat((future_tokens, action_features), dim=1)
-        # print(sa_embs.shape)                    # torch.Size([32, 81, 768])
+
 
         # 6. PerceiverHead前向传播
         # (1) Perceiver-Head和DiT-Head的区别在于前者是cross_attn+ffn，而后者兼具self_attn+cross_attn+ffn，
@@ -352,18 +352,18 @@ class FlowmatchingActionHead(nn.Module):
             visual_language_states=vl_embs,
             timestep=t_discretized,
         )
-        # print(type(self.model))                 # <class 'starVLA.model.modules.action_model.time_aware_action_head.TimeAwareActionHead'>
-        # print(sa_embs.shape)                    # torch.Size([32, 81, 768])
-        # print(vl_embs.shape)                    # torch.Size([32, 196, 2048])
-        # print(model_output.shape)               # torch.Size([32, 81, 1024])
+
+
+
+
         pred = self.action_decoder(model_output[:, -actions.shape[1]:, :])
-        # print(pred.shape)                       # torch.Size([32, 16, 32])
+
         pred_actions = pred
-        # print(pred_actions.shape)               # torch.Size([32, 16, 32])
+
 
         # 7. 计算action_loss
         # 若提供了action_mask则只在有效动作维度上计算loss、若未提供action_mask则在所有动作维度上计算loss；
-        # print(action_mask.shape)                # torch.Size([32, 16, 32])
+
         if action_mask is not None:
             if isinstance(action_mask, np.ndarray):
                 action_mask = torch.from_numpy(action_mask).to(device=pred_actions.device, dtype=pred_actions.dtype)
@@ -379,21 +379,21 @@ class FlowmatchingActionHead(nn.Module):
         # 8. 分离target_emb
         # 其中判断条件为，列表中的任意两个tensor_a,b之间差距小于阈值：|a-b|≤atol+rtol*max(|a|,|b|)
         target_emb = model_output[:, 1:1+self.future_tokens.weight.shape[0], :]
-        # print(target_emb.shape)                 # torch.Size([32, 64, 1024])
+
         target_emb_groups = target_emb.chunk(repeated_diffusion_steps, dim=0)
         all_equal = all(torch.allclose(target_emb_groups[0], target_emb_groups[i], atol=1e-5, rtol=0) for i in range(1, repeated_diffusion_steps))
-        # print('')
-        # print(target_emb_groups[0][0, 0, :5])
-        # print(target_emb_groups[1][0, 0, :5])
-        # print(target_emb_groups[2][0, 0, :5])
-        # print(target_emb_groups[3][0, 0, :5])
-        assert all_equal, "/path/to/workspace/projects/WM4A/starVLA/model/modules/action_model/PerceiverHead.py is ERROR"
+
+
+
+
+
+        assert all_equal, "/path/to/local-resource is ERROR"
         target_emb_stacked = torch.stack(target_emb_groups, dim=0)  # 形状: (N, *)
         target_emb = torch.mean(target_emb_stacked, dim=0)
-        # print(target_emb[0, 0, :5])
-        # print(target_emb.shape)                 # torch.Size([8, 64, 1024])
 
-        # print('################# FlowmatchingActionHead.forward-2')
+
+
+
         if use_vjepa2ac:
             return loss, target_emb
         else:
@@ -401,8 +401,8 @@ class FlowmatchingActionHead(nn.Module):
 
     @torch.no_grad()
     def predict_action(self, vl_embs: torch.Tensor, state: torch.Tensor = None, embodiment_tag: torch.Tensor = None) -> torch.Tensor:
-        # print('################# FlowmatchingActionHead.predict_action-1')
-        
+
+
         # 1. 生成随机噪声
         batch_size = vl_embs.shape[0]
         device = vl_embs.device
@@ -411,37 +411,37 @@ class FlowmatchingActionHead(nn.Module):
             dtype=vl_embs.dtype,
             device=device,
         )
-        # print(self.config.action_horizon)       # 16
-        # print(self.config.action_dim)           # 32
-        # print(vl_embs.shape)                    # torch.Size([8, 196, 2048])
-        # print(actions.shape)                    # torch.Size([8, 16, 32])
 
-        # 2. 编码state        
+
+
+
+
+        # 2. 编码state
         state_features = self.state_encoder(state) if state is not None else None
-        # print(state.shape)                      # torch.Size([8, 1, 64])
-        # print(state_features.shape)             # torch.Size([8, 1, 768])
+
+
 
         # 3. 迭代降噪
         num_steps = self.num_inference_timesteps
         dt = 1.0 / num_steps
-        # print(self.num_inference_timesteps)     # 20
-        # print(self.num_timestep_buckets)        # 1000
+
+
         for t in range(num_steps):
-            # print(t)                            # 0         1           2           ...         19
+
             t_cont = t / float(num_steps)
-            # print(t_cont)                       # 0.0       0.05        0.1         ...         0.95
+
             t_discretized = int(t_cont * self.num_timestep_buckets)
-            # print(t_discretized)                # 0         50          100         ...         950
+
 
             # 3.1 将t离散化并，对noised_action做时间编码
             timesteps_tensor = torch.full(size=(batch_size,), fill_value=t_discretized, device=device)
-            # print(timesteps_tensor.shape)       # torch.Size([8])
-            # print(actions.shape)                # torch.Size([8, 16, 32])
+
+
             action_features = self.action_encoder(actions, timesteps_tensor)
-            # print(action_features.shape)        # torch.Size([8, 16, 768])
-            
+
+
             # 3.2 位置编码
-            # print(self.config.add_pos_embed)    # True
+
             if self.config.add_pos_embed:
                 pos_ids = torch.arange(action_features.shape[1], dtype=torch.long, device=device)
                 pos_embs = self.position_embedding(pos_ids).unsqueeze(0)
@@ -458,18 +458,18 @@ class FlowmatchingActionHead(nn.Module):
                 visual_language_states=vl_embs,
                 timestep=timesteps_tensor,
             )
-            # print(model_output.shape)           # torch.Size([8, 49, 1024])
+
             pred = self.action_decoder(model_output)
-            # print(pred.shape)                   # torch.Size([8, 49, 32])
-            # print(self.action_horizon)          # 16
+
+
             pred_velocity = pred[:, -self.action_horizon:]
-            # print(pred_velocity.shape)          # torch.Size([8, 16, 32])
+
 
             # 3.5 降噪
             actions = actions + dt * pred_velocity
-            # print(actions.shape)                # torch.Size([8, 16, 32])
-            
-        # print('################# FlowmatchingActionHead.predict_action-2')
+
+
+
         return actions
 
     @property
@@ -490,7 +490,7 @@ class CategorySpecificFlowmatchingActionHead(nn.Module):
     ):
         super().__init__()
         config = full_config.framework.action_model
-        self.hidden_size = config.hidden_size     # @contributor
+        self.hidden_size = config.hidden_size
         self.full_config = full_config
         action_model_type = config.action_model_type
         action_model_cfg = DiTConfig[action_model_type]
@@ -622,11 +622,11 @@ class CategorySpecificFlowmatchingActionHead(nn.Module):
             device=device,
         )
         assert embodiment_tag is not None, "Embodiment tag is required for prediction"
-        embodiment_tag = torch.tensor(embodiment_tag, device=device, dtype=torch.long) # 
+        embodiment_tag = torch.tensor(embodiment_tag, device=device, dtype=torch.long) #
         # 如果是标量，扩展到 batch_size
         if embodiment_tag.dim() == 0:
             embodiment_tag = embodiment_tag.repeat(batch_size)
-        
+
         num_steps = self.num_inference_timesteps
         dt = 1.0 / num_steps
 
@@ -692,9 +692,3 @@ def get_action_model(config=None):
         return CategorySpecificFlowmatchingActionHead(full_config=config)
     else:
         return FlowmatchingActionHead(full_config=config)
-
-
-if __name__ == "__main__":
-    # TODO make each backbone.py can be debug independently
-
-    pass

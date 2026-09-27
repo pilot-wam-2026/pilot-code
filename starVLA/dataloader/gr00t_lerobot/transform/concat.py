@@ -79,7 +79,7 @@ class ConcatTransform(InvertibleModalityTransform):
             try:
                 modality, _ = key.split(".")
             except:  # noqa: E722
-                ### Handle language annotation special case
+
                 if "annotation" in key:
                     modality = "language"
                 else:

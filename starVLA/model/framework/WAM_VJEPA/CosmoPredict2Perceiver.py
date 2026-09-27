@@ -107,22 +107,22 @@ class CosmoPredict2_Perceiver(baseframework):
     # 训练时
     # action支路，self.backbone.build_inputs、self.backbone.forward()、self.action_model.forward()
     def forward(self, examples: List[dict] = None, **kwargs) -> Tuple:
-        # print('################# CosmoPredict2_Perceiver.forward-1')
+
 
         # 1. CosmosPredict：构建输入
         batch_images = [example["image"] for example in examples]
         instructions = [example["lang"] for example in examples]
-        # print(len(examples))                                # 8
+
 
         wm_inputs = self.backbone.build_inputs(images=batch_images, instructions=instructions)
-        # print(type(self.backbone))                          # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface'>
-        # print(wm_inputs.keys())                             # dict_keys(['hidden_states', 'timestep', 'encoder_hidden_states', 'condition_mask', 'padding_mask', '_is_wm_input'])
-        # print(wm_inputs['hidden_states'].shape)             # torch.Size([8, 16, 1, 28, 28])
-        # print(wm_inputs['timestep'].shape)                  # torch.Size([8, 1, 1, 1, 1])
-        # print(wm_inputs['encoder_hidden_states'].shape)     # torch.Size([8, 512, 100352])
-        # print(wm_inputs['condition_mask'].shape)            # torch.Size([8, 1, 1, 28, 28])
-        # print(wm_inputs['padding_mask'].shape)              # torch.Size([1, 1, 224, 224])
-        # print(wm_inputs['_is_wm_input'])                    # True
+
+
+
+
+
+
+
+
 
         # 2. CosmosPredict：前向推理
         # 这里的CosmosPredict起到了一个编码器的作用，将输入的当前观测和prompt编码为vl-tokens
@@ -133,19 +133,19 @@ class CosmoPredict2_Perceiver(baseframework):
                 return_dict=True,
             )
             last_hidden = wm_outputs.hidden_states[-1]
-            # print(type(wm_outputs))                         # <class 'starVLA.model.modules.world_model.CosmoPredict25._CosmoPredict25_Interface.forward.<locals>._WMOutput'>
-            # print(last_hidden.shape)                        # torch.Size([8, 196, 2048])
+
+
 
         # 3. ActionHead：构建输入
         with torch.autocast("cuda", dtype=torch.float32):
-            
+
             # 3.1 初始化action
             actions = [example["action"] for example in examples]
             actions = torch.tensor(np.array(actions), device=last_hidden.device, dtype=last_hidden.dtype)
-            # print(actions.shape)                            # torch.Size([8, 16, 32])
+
             actions_target = actions[:, -(self.future_action_window_size + 1):, :]
-            # print(self.future_action_window_size)           # 15
-            # print(actions_target.shape)                     # torch.Size([8, 16, 32])
+
+
 
             # 3.2 重复降噪
             # 将action和vl-tokens复制多次，重复多次降噪
@@ -156,41 +156,41 @@ class CosmoPredict2_Perceiver(baseframework):
             )
             actions_target_repeated = actions_target.repeat(repeated_diffusion_steps, 1, 1)
             last_hidden_repeated = last_hidden.repeat(repeated_diffusion_steps, 1, 1)
-            # print(actions_target_repeated.shape)            # torch.Size([32, 16, 32])
-            # print(last_hidden_repeated.shape)               # torch.Size([32, 196, 2048])
+
+
 
             # 3.3 准备state、action_mask和embodiment_tag
             state = [example["state"] for example in examples] if "state" in examples[0] else None
             if state is not None:
-                # print('state is not None')
+
                 state = torch.tensor(np.array(state), device=last_hidden.device, dtype=last_hidden.dtype)
-                # print(state.shape)                          # torch.Size([8, 1, 64])
+
                 state_repeated = state.repeat(repeated_diffusion_steps, 1, 1)
-                # print(state_repeated.shape)                 # torch.Size([32, 1, 64])
+
             else:
                 state_repeated = None
 
             action_mask = [example["action_mask"] for example in examples] if "action_mask" in examples[0] else None
             if action_mask is not None:
-                # print('action_mask is not None')
+
                 action_mask_tensor = torch.tensor(np.array(action_mask), device=last_hidden.device, dtype=last_hidden.dtype)
-                # print(action_mask_tensor.shape)             # torch.Size([8, 16, 32])
+
                 action_mask_target = action_mask_tensor[:, -(self.future_action_window_size + 1):, :]
-                # print(action_mask_target.shape)             # torch.Size([8, 16, 32])
+
                 action_mask_repeated = action_mask_target.repeat(repeated_diffusion_steps, 1, 1)
-                # print(action_mask_repeated.shape)           # torch.Size([32, 16, 32])
+
             else:
                 action_mask_repeated = None
-            
+
             embodiment_tag = [example["embodiment_tag"] for example in examples] if "embodiment_tag" in examples[0] else None
             if embodiment_tag is not None:
-                # print('embodiment_tag is not None')
+
                 embodiment_tag = torch.tensor(np.array(embodiment_tag), device=last_hidden.device, dtype=torch.int64)
-                # print(embodiment_tag.shape)                 # torch.Size([8])
+
                 embodiment_tag = embodiment_tag.view(-1)
-                # print(embodiment_tag.shape)                 # torch.Size([8])
+
                 embodiment_tag_repeated = embodiment_tag.repeat(repeated_diffusion_steps)
-                # print(embodiment_tag_repeated.shape)        # torch.Size([32])
+
             else:
                 embodiment_tag_repeated = None
 
@@ -203,16 +203,16 @@ class CosmoPredict2_Perceiver(baseframework):
                 use_vjepa2ac=True,
                 repeated_diffusion_steps=repeated_diffusion_steps,
             )
-            # print(type(self.action_model))          # <class 'starVLA.model.modules.action_model.PerceiverHead.FlowmatchingActionHead'>
-            # print(last_hidden_repeated.shape)       # torch.Size([32, 196, 2048])
-            # print(actions_target_repeated.shape)    # torch.Size([32, 16, 32])
-            # print(state_repeated.shape)             # torch.Size([32, 1, 64])
-            # print(embodiment_tag_repeated.shape)    # torch.Size([32])
-            # print(action_mask_repeated.shape)       # torch.Size([32, 16, 32])
-            # print(action_loss)                      # tensor(1.5625, device='cuda:0', grad_fn=<DivBackward0>)
-            # print(target_emb.shape)                 # torch.Size([8, 64, 1024])
 
-        # print('################# CosmoPredict2_Perceiver.forward-2')
+
+
+
+
+
+
+
+
+
         return action_loss, target_emb
 
     # @torch.inference_mode()

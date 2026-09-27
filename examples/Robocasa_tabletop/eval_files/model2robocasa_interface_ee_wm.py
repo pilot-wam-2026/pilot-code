@@ -1,4 +1,5 @@
 from pathlib import Path
+from .seeded_episodes import request_seed
 from typing import Optional
 
 import cv2 as cv
@@ -26,6 +27,7 @@ class PolicyWarper(BasePolicyWarper):
         wm_future_image_dir: Optional[str] = None,
         num_inference_steps: Optional[int] = None,
         shift: Optional[float] = None,
+        policy_seed: Optional[int] = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -36,6 +38,7 @@ class PolicyWarper(BasePolicyWarper):
         self._wm_video_writers = {}
         self.num_inference_steps = num_inference_steps
         self.shift = shift
+        self.policy_seed = policy_seed
         if self.wm_future_image_dir is not None:
             self.wm_future_image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -57,6 +60,10 @@ class PolicyWarper(BasePolicyWarper):
         self._save_wm_future_images(response.get("data", {}), images)
 
     def _update_vla_input(self, vla_input: dict) -> None:
+        if self.policy_seed is not None:
+            vla_input["inference_seed"] = request_seed(
+                self.policy_seed, self.wm_episode_ids, self.wm_env_step_indices
+            )
         if self.num_inference_steps is not None:
             vla_input["num_inference_steps"] = int(self.num_inference_steps)
         if self.shift is not None:
@@ -64,7 +71,7 @@ class PolicyWarper(BasePolicyWarper):
         future_cfg = dict(vla_input.get("future_image_generation", {}))
         future_cfg.setdefault("enabled", True)
         future_cfg.setdefault("return_full_video", False)
-        future_cfg.setdefault("num_frames", 9)
+        future_cfg.setdefault("num_frames", 5)
         future_cfg.setdefault("future_frame_index", -1)
         future_cfg.setdefault("height", 224)
         future_cfg.setdefault("width", "auto")
@@ -151,6 +158,7 @@ class PolicyWarper(BasePolicyWarper):
         return recorder
 
     def finish_eval_episode(self, env_idx: int, episode_id: int, success: bool) -> None:
+        super().finish_eval_episode(env_idx, episode_id, success)
         current = self._wm_video_writers.pop(env_idx, None)
         if current is None or self.wm_future_image_dir is None:
             return

@@ -1,0 +1,11 @@
+PILOT
+
+Built on NVIDIA Cosmos
+
+Licensed by NVIDIA Corporation under the NVIDIA Open Model License
+
+This research artifact includes adapted model and training code, a
+RoboCasa-GR1 policy fine-tuned from pretrained components, and separate
+third-party simulator resources. It is not an official NVIDIA release.
+The upstream license agreements and source notices remain applicable.
+See LICENSE.md, LICENSES/, and THIRD_PARTY_NOTICES.md.

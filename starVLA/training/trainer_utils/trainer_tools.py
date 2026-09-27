@@ -191,7 +191,7 @@ class TrainerUtils:
                     print(f"⚠️ module path does not exist, cannot freeze: {path}")
                     continue
 
-        # accelerator.wait_for_everyone()  # synchronize when distributed training
+
         if dist.get_rank == 0:
             print(f"🔒 Frozen modules with re pattern: {frozen}")
         return model
@@ -325,6 +325,11 @@ class TrainerUtils:
         if hasattr(dataloader, "sampler") and callable(getattr(dataloader.sampler, "set_epoch", None)):
             dataloader.sampler.set_epoch(epoch_counter)
 
+        if hasattr(dataloader, "set_epoch"):
+            dataloader.set_epoch(epoch_counter)
+        if hasattr(dataloader.dataset, "set_epoch"):
+            dataloader.dataset.set_epoch(epoch_counter)
+
         # 3. create new iterator
         return iter(dataloader), epoch_counter
 
@@ -375,7 +380,7 @@ class TrainerUtils:
         angle_degs_tensor = torch.tensor(angle_degs)
         mean_angle_deg = torch.mean(angle_degs_tensor).item()
         angle_variance = torch.sqrt(torch.var(angle_degs_tensor)).item()
-        # accelerator.wait_for_everyone()
+
         return mean_angle_deg, angle_variance
 
     @staticmethod
@@ -495,7 +500,7 @@ class TrainerUtils:
 
         # 获取所有符合命名规则，确保只匹配以 .pt 结尾的文件
         checkpoints = [
-            f for f in os.listdir(checkpoint_dir) 
+            f for f in os.listdir(checkpoint_dir)
             if re.match(r"steps_(\d+)_pytorch_model\.pt$", f)  # 添加 $ 确保以 .pt 结尾
             and os.path.isfile(os.path.join(checkpoint_dir, f))  # 确保是文件
         ]

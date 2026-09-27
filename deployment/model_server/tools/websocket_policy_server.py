@@ -1,5 +1,6 @@
 # Copyright 2025 starVLA community. All rights reserved.
-# Licensed under the MIT License, Version 1.0 (the "License"); 
+# Licensed under the MIT License, Version 1.0 (the "License");
+
 
 import asyncio
 import logging
@@ -28,7 +29,7 @@ class WebsocketPolicyServer:
         port: int = 10093,
         idle_timeout: int = -1,  # 新增参数，单位秒，-1表示永不关闭
         metadata: dict | None = None,
-        
+
     ) -> None:
         self._policy = policy  #
         self._host = host
@@ -136,7 +137,7 @@ class WebsocketPolicyServer:
             except Exception as e:
                 logging.exception("Policy inference error (request_id=%s)", req_id)
                 logging.exception(e)
-                
+
                 return {
                     "status": "error",
                     "ok": False,
@@ -167,12 +168,5 @@ class WebsocketPolicyServer:
             }
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, force=True)
-    # Example usage:
-    # policy = YourPolicyClass()  # Replace with your actual policy class
-    # server = WebsocketPolicyServer(policy, host="localhost", port=10091)
-    # server.serve_forever()
-    raise NotImplementedError("This module is not intended to be run directly.")
 #
 #  Instead, it should be imported and used in a server context.

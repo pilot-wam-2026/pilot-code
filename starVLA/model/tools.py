@@ -124,15 +124,15 @@ class Registry:
         """Decorator: register a builder function or class"""
         def decorator(framework_class):
             if key in self._registry:
-                # print(ImportWarning(f"{key} already registered to {self.name}"))
+
                 pass
             self._registry[key] = framework_class
             return framework_class
         return decorator
-    
+
     def __getitem__(self, key):
         return self._registry[key]
-    
+
     def list(self):
         """
         List currently registered keys; if with_values=True (not used here) return mapping {key: value_obj}.
@@ -193,4 +193,3 @@ def read_mode_config(pretrained_checkpoint):
         overwatch.error(f"❌ Pretrained checkpoint `{pretrained_checkpoint}` does not exist.")
         raise FileNotFoundError(f"Pretrained checkpoint `{pretrained_checkpoint}` does not exist.")
     return global_cfg, norm_stats
-

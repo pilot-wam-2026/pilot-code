@@ -14,7 +14,13 @@ Conventions:
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
+from starVLA.training.trainer_utils.checkpoint_state import (
+    prepare_training_config, initialize_training_state, save_training_state,
+    save_full_config, save_weight_metadata, save_final_checkpoint,
+)
+from starVLA.model.modules.world_model.reproducibility import evaluation_context
 from typing import Tuple
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
@@ -30,9 +36,10 @@ from PIL import Image
 from accelerate import Accelerator, DeepSpeedPlugin
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
+from starVLA.training.trainer_utils.training_reproducibility import seed_model_initialization
 from omegaconf import OmegaConf
 from tqdm import tqdm
-from transformers import AutoProcessor, get_scheduler
+from transformers import get_scheduler
 
 # Local Modules
 from starVLA.training.trainer_utils.trainer_tools import normalize_dotlist_args
@@ -67,32 +74,48 @@ from starVLA.training.trainer_utils.config_tracker import wrap_config, AccessTra
 #         "communication_data_type": "bf16",
 #     },
 # )
-deepspeed_plugin = DeepSpeedPlugin()
-# deepspeed_plugin = DeepSpeedPlugin(
-#     zero_stage=2,
-#     gradient_accumulation_steps=1,
-#     gradient_clipping=1.0,
-#     zero3_init_flag=False,
-#     hf_ds_config={
-#         "bf16": {"enabled": True},
-#         "train_micro_batch_size_per_gpu": "auto",
-#         "train_batch_size": "auto",
-#         "gradient_accumulation_steps": "auto",
-#         "zero_optimization": {
-#             "stage": 2,
-#             "allgather_partitions": True,
-#             "allgather_bucket_size": 50000000,
-#             "reduce_scatter": True,
-#             "reduce_bucket_size": 50000000,
-#             "overlap_comm": False,
-#             "contiguous_gradients": True,
-#             "round_robin_gradients": True,
-#         },
-#         "gradient_clipping": 1.0,
-#         "communication_data_type": "bf16",
-#     },
-# )
-accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin)
+# deepspeed_plugin = DeepSpeedPlugin()
+
+# 从 CLI 参数中提前解析梯度累积步数(accelerator 为模块级对象，在 cfg 加载前创建)
+def _parse_grad_accum_steps(default=1):
+    argv = sys.argv
+    for i, a in enumerate(argv):
+        if a == "--trainer.gradient_accumulation_steps" and i + 1 < len(argv):
+            return int(argv[i + 1])
+        if a.startswith("--trainer.gradient_accumulation_steps="):
+            return int(a.split("=", 1)[1])
+    return default
+
+_grad_accum_steps = _parse_grad_accum_steps(default=1)
+
+deepspeed_plugin = DeepSpeedPlugin(
+    zero_stage=2,
+    gradient_accumulation_steps=_grad_accum_steps,
+    gradient_clipping=1.0,
+    zero3_init_flag=False,
+    hf_ds_config={
+        "bf16": {"enabled": True},
+        "train_micro_batch_size_per_gpu": "auto",
+        "train_batch_size": "auto",
+        "gradient_accumulation_steps": _grad_accum_steps,
+        "zero_optimization": {
+            "stage": 2,
+            "allgather_partitions": True,
+            "allgather_bucket_size": 50000000,
+            "reduce_scatter": True,
+            "reduce_bucket_size": 50000000,
+            "overlap_comm": False,
+            "contiguous_gradients": True,
+            "round_robin_gradients": True,
+        },
+        "gradient_clipping": 1.0,
+        "communication_data_type": "bf16",
+    }
+)
+accelerator = Accelerator(
+    deepspeed_plugin=deepspeed_plugin,
+    gradient_accumulation_steps=_grad_accum_steps,
+)
 accelerator.print(accelerator.state)
 
 # Sane Defaults
@@ -105,9 +128,6 @@ from accelerate.logging import get_logger
 logger = get_logger(__name__)
 
 
-def load_fast_tokenizer():
-    fast_tokenizer = AutoProcessor.from_pretrained("physical-intelligence/fast", trust_remote_code=True)
-    return fast_tokenizer
 
 
 def setup_directories(cfg) -> Path:
@@ -163,12 +183,12 @@ def setup_optimizer_and_scheduler(model, cfg) -> Tuple[torch.optim.Optimizer, to
 
     # 从cfg中读取出模型每组的学习率，同一组的所有组件共享相同的初始学习率
     param_groups = build_param_lr_groups(model=model, cfg=cfg)
-    # print(len(param_groups))                    # 
-    # print(param_groups[0].keys())               # 
-    # print(len(param_groups[0]['params']))       # 
-    # print(param_groups[0]['params'][0].shape)   # 
-    # print(param_groups[0]['lr'])                # 
-    # print(param_groups[0]['name'])              # 
+    # print(len(param_groups))                    #
+    # print(param_groups[0].keys())               #
+    # print(len(param_groups[0]['params']))       #
+    # print(param_groups[0]['params'][0].shape)   #
+    # print(param_groups[0]['lr'])                #
+    # print(param_groups[0]['name'])              #
 
     # 显式校验可训练参数，避免 DeepSpeed 在内部遇到空参数组
     total_trainable_tensors = sum(len(group["params"]) for group in param_groups)
@@ -232,7 +252,8 @@ class VLATrainer(TrainerUtils):
         self._init_checkpointing() # TODO merge with load pretrained weights
 
         # 根据  resume 调整 lr_scheduler
-        self._adjust_lr_scheduler_for_resume()
+        if not self.config.trainer.get("resume_training_state"):
+            self._adjust_lr_scheduler_for_resume()
 
         # freeze parameters
         freeze_modules = (
@@ -253,8 +274,9 @@ class VLATrainer(TrainerUtils):
             self.vla_train_dataloader,
         )
 
+        save_full_config(self)
         self._init_wandb()
-
+        initialize_training_state(self)
 
     def _adjust_lr_scheduler_for_resume(self):
         """根据已完成的步数调整学习率调度器状态"""
@@ -293,6 +315,12 @@ class VLATrainer(TrainerUtils):
         """Initialize checkpoint directory and handle checkpoint loading."""
         self.checkpoint_dir = os.path.join(self.config.output_dir, "checkpoints")
         os.makedirs(self.checkpoint_dir, exist_ok=True)
+        state_path = self.config.trainer.get("resume_training_state")
+        if state_path:
+            manifest = json.loads((Path(state_path) / "training_manifest.json").read_text())
+            self.completed_steps = int(manifest["completed_steps"])
+            self.resume_from_checkpoint = state_path
+            return
 
         # 获取预训练检查点和是否恢复训练的标志
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
@@ -342,21 +370,23 @@ class VLATrainer(TrainerUtils):
             logger.info("No pretrained checkpoint provided. Starting training from scratch.")
             self.completed_steps = 0
 
-
     def _load_checkpoint(self, checkpoint_path):
         """load checkpoint"""
         self.accelerator.load_state(checkpoint_path)
         self.accelerator.print(f"Resumed from checkpoint: {checkpoint_path}")
 
     def _save_checkpoint(self):
-        """save current training state"""
+        """Export weights and save rank-aware native training state."""
+        state_dict = self.accelerator.get_state_dict(self.model)
 
         if self.accelerator.is_main_process:
 
             checkpoint_path = os.path.join(self.checkpoint_dir, f"steps_{self.completed_steps}")
             # save model state
-            state_dict = self.accelerator.get_state_dict(self.model)
-            torch.save(state_dict, checkpoint_path + "_pytorch_model.pt")
+            weight_path = checkpoint_path + "_pytorch_model.pt"
+            torch.save(state_dict, weight_path + ".tmp")
+            os.replace(weight_path + ".tmp", weight_path)
+            save_weight_metadata(self, weight_path)
 
             # save training metadata
             summary_data = {
@@ -380,6 +410,9 @@ class VLATrainer(TrainerUtils):
                 logger.info("✅ Configuration files saved")
 
         self.accelerator.wait_for_everyone()
+        save_full_config(self)
+        save_training_state(self)
+        self._last_checkpoint_step = self.completed_steps
 
     def _log_metrics(self, metrics):
         """record training metrics"""
@@ -411,8 +444,10 @@ class VLATrainer(TrainerUtils):
             self.vla_iter, self.vla_epoch_count = TrainerUtils._reset_dataloader(
                 self.vla_train_dataloader, self.vla_epoch_count
             )
+            self.batches_in_epoch = 0
             batch_vla = next(self.vla_iter)
 
+        self.batches_in_epoch = getattr(self, 'batches_in_epoch', 0) + 1
         return batch_vla
 
     def train(self):
@@ -467,9 +502,9 @@ class VLATrainer(TrainerUtils):
                             "A": f"{step_metrics['action_dit_loss']:.4f}",
                         }
                     )
-            
+
             # evaluate model
-            if self.completed_steps % self.config.trainer.eval_interval == 0:
+            if self.accelerator.sync_gradients and self.completed_steps % self.config.trainer.eval_interval == 0:
                 step_metrics = self.eval_action_model(step_metrics)
 
             # record metrics
@@ -478,7 +513,7 @@ class VLATrainer(TrainerUtils):
             self._log_metrics(step_metrics)
 
             # save checkpoint
-            if self.completed_steps % self.config.trainer.save_interval == 0 and self.completed_steps > 0:
+            if self.accelerator.sync_gradients and self.completed_steps % self.config.trainer.save_interval == 0 and self.completed_steps > 0:
                 self._save_checkpoint()
 
             # check termination condition
@@ -505,11 +540,12 @@ class VLATrainer(TrainerUtils):
         actions = [example["action"] for example in examples]  # label
         # Predict actions using the model
         raw_model = self.accelerator.unwrap_model(self.model)
-        output_dict = raw_model.predict_action(
-            examples=examples,
-            use_ddim=True,
-            num_ddim_steps=20,
-        )
+        with evaluation_context(raw_model):
+            output_dict = raw_model.predict_action(
+                examples=examples,
+                use_ddim=True,
+                num_ddim_steps=20,
+            )
 
         if self.accelerator.is_main_process:
             normalized_actions = output_dict["normalized_actions"]  # B, T, D
@@ -735,9 +771,10 @@ class VLATrainer(TrainerUtils):
 
     def _train_step(self, batch_vla, batch_vlm=None):
         """execute single training step"""
-        with self.accelerator.accumulate(self.model):
-            self.optimizer.zero_grad()
-
+        # ZeRO-2 下 DeepSpeed 引擎内部按 gradient_accumulation_steps 自动累积梯度，
+        # 因此不能使用 accelerator.accumulate()/no_sync（与 ZeRO 梯度分区不兼容）。
+        # 每个 micro-batch 正常 forward/backward/step，引擎会在累积边界才真正更新参数。
+        if True:
             # VLA task forward propagation
             with self.accelerator.autocast():
                 output_dict = self.model.forward(batch_vla)
@@ -749,10 +786,9 @@ class VLATrainer(TrainerUtils):
                     raise RuntimeError(f"action_loss must be scalar, got shape={tuple(action_loss.shape)}")
                 if not torch.isfinite(action_loss.detach()):
                     self.optimizer.zero_grad(set_to_none=True)
-                    return {
-                        "action_dit_loss": float("nan"),
-                        "skipped_nonfinite_loss": 1.0,
-                    }
+                    raise FloatingPointError(
+                        f"Non-finite action_loss before update {self.completed_steps + 1}"
+                    )
 
                 for key, value in output_dict.items():
                     if key == "action_loss":
@@ -765,18 +801,9 @@ class VLATrainer(TrainerUtils):
 
             if not torch.isfinite(total_loss.detach()):
                 self.optimizer.zero_grad(set_to_none=True)
-                metrics = {
-                    "action_dit_loss": float("nan"),
-                    "skipped_nonfinite_loss": 1.0,
-                }
-                for key, value in output_dict.items():
-                    if key == "action_loss":
-                        continue
-                    if torch.is_tensor(value) and value.numel() == 1:
-                        metrics[key] = value.detach().float().item()
-                    elif isinstance(value, (int, float)):
-                        metrics[key] = float(value)
-                return metrics
+                raise FloatingPointError(
+                    f"Non-finite total_loss before update {self.completed_steps + 1}"
+                )
 
             # VLA backward propagation
             self.accelerator.backward(total_loss)
@@ -786,8 +813,11 @@ class VLATrainer(TrainerUtils):
                 self.accelerator.clip_grad_norm_(self.model.parameters(), self.config.trainer.gradient_clipping)
 
             # optimizer step
+            # DeepSpeed 引擎会在累积边界自动执行真正的 step 并清零梯度；
+            # 非累积边界时 step 为 no-op，梯度继续累积。
             self.optimizer.step()
-            self.lr_scheduler.step()
+            if self.accelerator.sync_gradients:
+                self.lr_scheduler.step()
 
         metrics = {
             "action_dit_loss": action_loss.item(),
@@ -804,14 +834,7 @@ class VLATrainer(TrainerUtils):
 
     def _finalize_training(self):
         """training end processing"""
-        # save final model
-        if self.accelerator.is_main_process:
-            final_checkpoint = os.path.join(self.config.output_dir, "final_model")
-            os.makedirs(final_checkpoint, exist_ok=True)
-            state_dict = self.accelerator.get_state_dict(self.model)
-            torch.save(state_dict, os.path.join(final_checkpoint, "pytorch_model.pt"))
-            logger.info(f"Training complete. Final model saved at {final_checkpoint}")
-
+        save_final_checkpoint(self)
 
         # close W&B
         if self.accelerator.is_main_process:
@@ -822,6 +845,16 @@ class VLATrainer(TrainerUtils):
 
 def main(cfg) -> None:
     logger.info("VLA Training :: Warming Up")
+    cfg = prepare_training_config(cfg)
+    seed_model_initialization(cfg, accelerator.process_index)
+    if accelerator.gradient_accumulation_steps != 1:
+        raise ValueError("The repaired ZeRO-2 loop is validated only for gradient_accumulation_steps=1")
+    if int(cfg.trainer.get("gradient_accumulation_steps", 1)) != accelerator.gradient_accumulation_steps:
+        raise ValueError("Trainer and Accelerator gradient accumulation settings disagree")
+    if cfg.trainer.get("stateful_dataloader", False):
+        accelerator.dataloader_config.use_stateful_dataloader = True
+        accelerator.dataloader_config.use_seedable_sampler = True
+        accelerator.dataloader_config.data_seed = int(getattr(cfg, "seed", 3047))
     cfg = wrap_config(cfg)
     logger.info("✅ Configuration wrapped for access tracking")
 

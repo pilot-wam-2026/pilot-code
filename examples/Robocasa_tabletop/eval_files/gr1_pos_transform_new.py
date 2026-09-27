@@ -782,15 +782,15 @@ class BodyRetargeter:
             'right_arm': self._compute_errors(q_right_arm_original, q_right_arm_ik, T_torso_to_right_hand, T_torso_to_right_hand_verified),
         }
 
-        # print("original q_left_arm_original: ", q_left_arm_original)
-        # print("original q_right_arm_original: ", q_right_arm_original)
-        # print("ik q_left_arm_ik: ", q_left_arm_ik)
-        # print("ik q_right_arm_ik: ", q_right_arm_ik)
 
-        # print("T_torso_to_left_hand_verified: ", T_torso_to_left_hand_verified)
-        # print("T_torso_to_left_hand: ", T_torso_to_left_hand)
-        # print("T_torso_to_right_hand_verified: ", T_torso_to_right_hand_verified)
-        # print("T_torso_to_right_hand: ", T_torso_to_right_hand)
+
+
+
+
+
+
+
+
 
         if verbose:
             print("\n=== IK 验证结果 ===")
@@ -942,7 +942,7 @@ class BodyRetargeter:
                     self._set_last_solution(env_idx, chain_label, solution)
                     return solution
 
-                # print(
+
                 #     f"  IK 求解失败（{chain_label}），第 {attempt + 1}/{max_attempts} 次尝试，"
                 #     f"返回码: {ret}，maxiter={maxiter}，eps={eps}"
                 # )
@@ -958,7 +958,7 @@ class BodyRetargeter:
                 fallback_solution, _ = self._prepare_fallback_solution(chain_label, q_init, num_joints, global_q_min, global_q_max)
 
             self._set_last_solution(env_idx, chain_label, fallback_solution)
-            # print(f"  IK 多次尝试仍失败（{chain_label}），{reason}。")
+
 
             return fallback_solution
 
@@ -1167,13 +1167,13 @@ def process_img_cotrain(img: np.ndarray) -> np.ndarray:
             # h_src, w_src = img.shape[:2]
             # target_w, target_h = 1280, 800
 
-            # # 计算填充量（居中填充）
+
             # pad_w_left = (target_w - w_src) // 2
             # pad_w_right = target_w - w_src - pad_w_left
             # pad_h_top = (target_h - h_src) // 2
             # pad_h_bottom = target_h - h_src - pad_h_top
 
-            # # 填充到目标尺寸
+
             # img = np.pad(
             #     img,
             #     ((pad_h_top, pad_h_bottom), (pad_w_left, pad_w_right), (0, 0)),
@@ -1238,38 +1238,3 @@ def transform_point_cotrain(u: float, v: float) -> tuple[int, int]:
     v_final = v_padded * scale_v2
 
     return int(u_final), int(v_final)
-
-
-def main():
-    parser = argparse.ArgumentParser(description="批量处理机器人视频，投影手部关节点 (v0 逻辑)。")
-    parser.add_argument(
-        "--dataset-root",
-        type=Path,
-        default=Path(
-            "/path/to/workspace/robocasa_datasets_fewshots/gr1_unified.PosttrainPnPNovelFromCuttingboardToPanSplitA_GR1ArmsAndWaistFourierHands_100"
-        ))
-    parser.add_argument(
-        "--urdf-path",
-        type=Path,
-        default=Path("/path/to/workspace/code/robot_retarget/retarget/body_retarget/GR1T2/urdf/GR1T2_fourier_hand_6dof.urdf"))
-    parser.add_argument("--output-dir",
-                        type=Path,
-                        default=Path("/path/to/workspace/code/robot_retarget/retarget/body_retarget/output_videos"))
-    parser.add_argument("--verify-ik", action="store_true", default=True, help="是否执行 IK 验证")
-    parser.add_argument("--no-verify-ik", dest="verify_ik", action="store_false", help="禁用 IK 验证")
-    args = parser.parse_args()
-
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    camera_intrinsics = {'fx': 502.8689, 'fy': 502.8689, 'cx': 640.0, 'cy': 400.0}
-
-    retargeter = BodyRetargeter(urdf_path=args.urdf_path, camera_intrinsics=camera_intrinsics)
-
-    parquet_path = args.dataset_root / "data/chunk-000/episode_000098.parquet"
-    video_path = args.dataset_root / "videos/chunk-000/observation.images.ego_view/episode_000098.mp4"
-    output_path = args.output_dir / "episode_000093_projected_v8_logic.mp4"
-
-    retargeter.process_episode(video_path, parquet_path, output_path, verify_ik=args.verify_ik)
-
-
-if __name__ == "__main__":
-    main()

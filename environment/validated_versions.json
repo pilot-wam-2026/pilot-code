@@ -1,0 +1,30 @@
+{
+  "policy": {
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "packages": {
+      "torch": "2.8.0+cu128",
+      "numpy": "2.2.6",
+      "diffusers": "0.38.0",
+      "transformers": "5.8.1",
+      "accelerate": "1.5.2",
+      "deepspeed": "0.18.3",
+      "torchdata": "0.11.0",
+      "omegaconf": "2.3.0",
+      "safetensors": "0.8.0rc0",
+      "timm": "1.0.22",
+      "websockets": "15.0.1"
+    }
+  },
+  "simulation": {
+    "python": "3.10.18 | packaged by conda-forge | (main, Jun  4 2025, 14:45:41) [GCC 13.3.0]",
+    "packages": {
+      "torch": "2.5.1",
+      "numpy": "1.26.4",
+      "gymnasium": "1.0.0",
+      "mujoco": "3.2.6",
+      "websockets": "15.0.1",
+      "av": "12.3.0",
+      "omegaconf": "2.3.0"
+    }
+  }
+}

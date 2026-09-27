@@ -1,34 +1,55 @@
-# Third-Party Sources
+# Third-Party Notices
 
-## Attribution And Anonymity
+Removing first-party personal paths and optional bylines does not remove
+legally required third-party attribution. Upstream authors are not being
+presented as authors of the anonymous submission.
 
-Copyright notices, license text, dependency-author metadata, and upstream
-links are retained as third-party attribution. They are not an author list
-or affiliation statement for this submission. Optional personal bylines,
-personal filesystem paths, and historical experiment records are not part
-of the anonymous source release.
+| Component | Retained notice or scope |
+|---|---|
+| StarVLA-derived model/training framework | Existing source headers and `LICENSES/StarVLA-MIT.txt` |
+| OpenVLA-derived logging utilities | `LICENSES/OpenVLA-MIT.txt` |
+| NVIDIA GR00T-derived data and simulation utilities | Existing Apache-2.0 headers |
+| VJEPA2 source | `starVLA/facebookresearch_vjepa2_main/LICENSE` and `APACHE-LICENSE` |
+| NVIDIA Cosmos pretrained components | `NOTICE` and `LICENSES/NVIDIA-Open-Model-License.html`; no relicensing of weights |
+| VJEPA2-AC pretrained components | Original model terms remain applicable; source MIT license is not a blanket weight license |
+| RoboCasa | `third_party/robocasa/LICENSE` |
+| RoboSuite | `third_party/robosuite/LICENSE` |
+| hrl_geom and pykdl_utils | Original source headers and package manifests, including BSD notices |
+| Orocos KDL / PyKDL | `third_party/orocos_kinematics_dynamics/orocos_kdl/COPYING` and source notices |
+| pybind11 | Vendored `LICENSE` within the KDL source tree |
+| GR1 geometry and RoboCasa/RoboSuite objects | Embedded asset notices and applicable original asset terms |
+| Tokenizer/model metadata | Original upstream component terms |
 
-## Dependency Scope
+The Hugging Face resource repository's existing visibility is preserved.
+Making it public requires confirming the applicable model and asset
+redistribution terms; this package does not infer permission solely from
+files being present on a research server.
 
-This directory is a private reproducibility archive, not a declaration that
-all upstream code, weights, and assets have one common license.
+The model/tokenizer metadata and complete checkpoint are used together;
+downloading an unrelated newer backbone is not an equivalent reconstruction.
+Third-party code is retained only as required by this model's training and
+evaluation stack, including ancestor classes and shared dependency helpers.
 
-- RoboCasa: original license is retained at `third_party/robocasa/LICENSE`.
-- RoboSuite: upstream license is retained at `third_party/robosuite/LICENSE`.
-  Its collection source is recorded in
-  `provenance/runtime_versions_and_licenses.json`.
-- pykdl_utils and hrl_geom: original `package.xml` and source copyright
-  headers are retained; both package manifests declare BSD. No standalone
-  LICENSE file was found in the copied upstream roots. Resolve the complete
-  applicable license text before public redistribution.
-- Orocos KDL / PyKDL 1.5.4: the recovered source and its original notices,
-  including `orocos_kdl/COPYING`, are vendored. Its pybind11 source/notices
-  are also retained. See `provenance/kdl_source.json` for the source revision.
-- GR1 robot geometry and RoboCasa object assets: preserve all embedded
-  notices; their redistribution rights must be reviewed separately.
-- Original starVLA, NVIDIA simulation wrappers, VJEPA, model metadata, and
-  other source headers/notices are preserved. Backbone weight licenses must
-  also be reviewed before distribution; do not relicense them as project code.
+## License Sources
 
-The future Hugging Face upload is on hold. No public-distribution license or
-permission has been inferred from local access to these resources.
+The standalone texts were retrieved from their upstream publishers on
+September 27, 2026:
+
+- [StarVLA MIT license](https://github.com/starVLA/starVLA/blob/starVLA_dev/LICENSE)
+- [OpenVLA MIT license](https://github.com/openvla/openvla/blob/main/LICENSE)
+- [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/)
+
+The NVIDIA agreement retained here states a version release date of
+October 24, 2025. The copy preserves the complete agreement text, including
+its separate-component, attribution, guardrail, and trustworthy-AI terms.
+`LICENSES/Apache-2.0.txt` is also retained for Apache-licensed source files.
+
+## Deployment Boundary
+
+The inherited Cosmos wrapper uses an optional no-op safety-checker adapter
+for the archived robotics research path. This release does not establish
+that this adapter constitutes a compliant replacement guardrail for any
+particular use or deployment. Review the applicable upstream agreement
+and provide appropriate safeguards before distributing a service or
+using the model outside the controlled simulation benchmark. Do not
+interpret private repository access as a waiver of upstream terms.

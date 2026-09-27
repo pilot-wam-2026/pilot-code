@@ -82,14 +82,14 @@ def collate(features: List[dict]) -> dict:
 
         #     if dino_processor is not None:
         #         vit_inputs = dino_processor(images=image_inputs, return_tensors="pt")
-        #         #import pdb; pdb.set_trace()
+
         #         batch['vit_inputs'] = vit_inputs['pixel_values']
 
         #     for k, v in eagle_inputs.items():
         #         k = "eagle_" + k
         #         batch[k] = v
         #     if 'future_image_inputs' in values[0]:
-        #         # enable_latent_embedding
+
         #         future_image_inputs = []
         #         for v in values:
         #             future_image = v["future_image_inputs"]
@@ -140,7 +140,7 @@ class GR00TTransform(InvertibleModalityTransform):
         description="Dropout probability for language.",
     )
 
-    # # Private attributes to keep track of shapes/dimensions across apply/unapply
+
     # _language_key: Optional[list[str]] = PrivateAttr(default=None)
 
     # eagle_processor: ProcessorMixin = Field(default=build_eagle_processor(DEFAULT_EAGLE_PATH))
@@ -206,14 +206,14 @@ class GR00TTransform(InvertibleModalityTransform):
     #             video: [V, T, C, H, W]
     #     Returns: required input with the format `BatchFeature`
     #     """
-    #     # TODO(YL, FH): check if this is correct
+
     #     images = batch["images"]  # [V, T, C, H, W]
     #     images.shape[0]
 
     #     np_images = rearrange(images, "v t c h w -> (t v) c h w")
     #     text_content = []
 
-    #     # handle language
+
     #     lang = batch["language"]
     #     if isinstance(lang, list):
     #         lang = lang[0]
@@ -244,15 +244,15 @@ class GR00TTransform(InvertibleModalityTransform):
     #     return inputs
 
     # def _process_vision_info(self, eagle_conversation):
-    #     # TODO
+
     #     if "eagle" in DEFAULT_EAGLE_PATH.lower():
-    #         # Use the eagle processor to process the vision info
+
     #         return self.eagle_processor.process_vision_info(eagle_conversation)
     #     return process_vision_info(eagle_conversation)
 
     # def _prepare_video(self, data: dict):
     #     """Process, stack, and pad images from data['video']."""
-    #     ## TODO(YL, FH): check if this is correct
+
     #     images = rearrange(
     #         data["video"],
     #         "t v h w c -> v t c h w",
@@ -266,7 +266,7 @@ class GR00TTransform(InvertibleModalityTransform):
     #         if isinstance(raw_language, list):
     #             raw_language = raw_language[0]
 
-    #         # Language dropout
+
     #         if self.training and self.language_dropout_prob > 1e-9:
     #             if random.random() < self.language_dropout_prob:
     #                 raw_language = self.default_instruction
@@ -307,7 +307,7 @@ class GR00TTransform(InvertibleModalityTransform):
         return state, state_mask, n_state_tokens
 
 
-    #action horizon padding 
+    #action horizon padding
     # def _prepare_action(self, data: dict):
     #     """
     #     Pad/truncate to action_horizon and max_action_dim, return masks.
@@ -321,40 +321,40 @@ class GR00TTransform(InvertibleModalityTransform):
 
     #     actions = data["action"]
     #     actual_horizon = actions.shape[0]  # T
-    #     print('actual_horizon',actual_horizon)
+
     #     n_action_dims = actions.shape[1]  # D
 
     #     assert (
     #         n_action_dims <= self.max_action_dim
     #     ), f"Action dim {n_action_dims} exceeds max allowed {self.max_action_dim}."
 
-    #     # Handle action horizon mismatch: pad or truncate
+
     #     if actual_horizon < self.action_horizon:
-    #         # Pad temporal dimension with zeros
+
     #         pad_length = self.action_horizon - actual_horizon
     #         actions = np.pad(actions, ((0, pad_length), (0, 0)), mode='constant', constant_values=0)
-    #         # Create temporal mask (True for real data, False for padding)
+
     #         temporal_mask = np.concatenate([
     #             np.ones(actual_horizon, dtype=bool),
     #             np.zeros(pad_length, dtype=bool)
     #         ])
     #     elif actual_horizon > self.action_horizon:
-    #         # Truncate to target horizon (take first action_horizon steps)
+
     #         actions = actions[:self.action_horizon]
     #         temporal_mask = np.ones(self.action_horizon, dtype=bool)
     #     else:
     #         temporal_mask = np.ones(self.action_horizon, dtype=bool)
 
-    #     # Pad the action dimension
+
     #     actions = np.pad(actions, ((0, 0), (0, self.max_action_dim - n_action_dims)), mode='constant', constant_values=0)
 
-    #     # Create mask: [action_horizon, max_action_dim]
-    #     # True only for valid (temporal, dimension) pairs
+
+
     #     actions_mask = np.zeros((self.action_horizon, self.max_action_dim), dtype=bool)
     #     actions_mask[:, :n_action_dims] = True
-    #     # Apply temporal mask: set padded timesteps to False
+
     #     actions_mask = actions_mask & temporal_mask[:, np.newaxis]
-    #     # print('actions masks',actions_mask.shape)
+
     #     n_action_tokens = self.action_horizon
     #     return actions, actions_mask, n_action_tokens
 
@@ -369,7 +369,7 @@ class GR00TTransform(InvertibleModalityTransform):
             return actions, actions_mask, n_action_tokens
 
         actions = data["action"]
-        
+
         assert actions.shape[0] == self.action_horizon, f"{actions.shape=}, {self.action_horizon=}"
 
         n_action_tokens = actions.shape[0]  # T
@@ -385,20 +385,20 @@ class GR00TTransform(InvertibleModalityTransform):
         # Create mask: [T, max_action_dim]
         actions_mask = np.zeros((n_action_tokens, self.max_action_dim), dtype=bool)
         actions_mask[:, :n_action_dims] = True
-       
+
         return actions, actions_mask, n_action_tokens
 
     def apply_single(self, data: dict) -> dict:
         # Keep all original data and only update/add new fields
         transformed_data = data.copy()
 
-        # # 1) Prepare video and language with vlm processing.
+
         # images = self._prepare_video(data)
         # images = images.astype(np.uint8)
         # language = self._prepare_language(data)
         # batch_data = {"images": images, "language": language}
         # vlm_outputs = self._apply_vlm_processing(batch_data)
-        
+
         # Initialize vlm_outputs as empty dict since VLM processing is commented out
         vlm_outputs = {}
 
@@ -431,8 +431,8 @@ class GR00TTransform(InvertibleModalityTransform):
             ), f"Shape mismatch: {[(key, transformed_data[key].shape) for key in action_and_mask_keys]}"
 
         return transformed_data
-    
-    #####训练的时候不会调用这个batch方法，只有在推理的时候会调用#######
+
+
 
     def apply_batch(self, data: dict, batch_size: int) -> dict:
         # Split on batch dimension.

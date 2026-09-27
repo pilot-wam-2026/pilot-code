@@ -1,5 +1,6 @@
 # Copyright 2025 starVLA community. All rights reserved.
-# Licensed under the MIT License, Version 1.0 (the "License"); 
+# Licensed under the MIT License, Version 1.0 (the "License");
+
 
 import logging, argparse
 import time, os
@@ -32,14 +33,14 @@ class WebsocketClientPolicy:
     def _wait_for_server(self, timeout: float = 300) -> Tuple[websockets.sync.client.ClientConnection, Dict]:
         logging.info(f"Waiting for server at {self._uri}...")
         start_time = time.time()
-        
+
         for k in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
             os.environ.pop(k, None)
-        
+
         while True:
             if time.time() - start_time > timeout:
                 raise TimeoutError(f"Failed to connect to server within {timeout} seconds")
-            
+
             try:
                 headers = {"Authorization": f"Api-Key {self._api_key}"} if self._api_key else None
                 conn = websockets.sync.client.connect(
@@ -62,7 +63,7 @@ class WebsocketClientPolicy:
             self._ws.close()
         except Exception:
             pass
-    
+
     @override
     def predict_action(self, query_info: Dict) -> Dict:
         data = self._packer.pack(query_info)
@@ -71,6 +72,3 @@ class WebsocketClientPolicy:
         if isinstance(response, str):
             raise RuntimeError(f"Error in inference server:\n{response}")
         return msgpack_numpy.unpackb(response)
-
-
-

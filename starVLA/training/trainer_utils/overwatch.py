@@ -24,8 +24,10 @@ LOG_CONFIG = {
         "console": {
             "class": "rich.logging.RichHandler",
             "formatter": "simple-console",
-            "markup": True,
-            "rich_tracebacks": True,
+            # Rich hyperlink IDs use Python's global RNG.
+            "markup": False,
+            "rich_tracebacks": False,
+            "enable_link_path": False,
             "show_level": True,
             "show_path": True,
             "show_time": True,

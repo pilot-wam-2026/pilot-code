@@ -72,34 +72,34 @@ LE_ROBOT3_EPISODE_FILENAME = "meta/episodes/*/*.parquet"
 
 # def calculate_dataset_statistics(parquet_paths: list[Path]) -> dict:
 #     """Calculate the dataset statistics of all columns for a list of parquet files."""
-#     # Dataset statistics
+
 #     all_low_dim_data_list = []
-#     # Collect all the data
-#     # parquet_paths = parquet_paths[:3]
+
+
 #     for parquet_path in tqdm(
 #         sorted(list(parquet_paths)),
 #         desc="Collecting all parquet files...",
 #     ):
-#         # Load the parquet file
+
 #         parquet_data = pd.read_parquet(parquet_path)
 #         parquet_data = parquet_data
 #         all_low_dim_data_list.append(parquet_data)
 
 #     all_low_dim_data = pd.concat(all_low_dim_data_list, axis=0)
-#     # Compute dataset statistics
+
 #     dataset_statistics = {}
 #     for le_modality in tqdm(all_low_dim_data.columns, desc="Processing modalities"):
-#         print(le_modality)
+
 #         if "task_info" in le_modality:
 #             continue
-#         print(f"Computing statistics for {le_modality}...")
-#         # 检查数据是否为空或无效
+
+
 #         try:
 #             np_data = np.vstack(
 #                 [np.asarray(x, dtype=np.float32) for x in all_low_dim_data[le_modality]]
 #             )
 #         except Exception as e:
-#             print(f"Warning: Failed to process modality {le_modality} due to error: {e}")
+
 #             continue
 
 #         dataset_statistics[le_modality] = {
@@ -1212,7 +1212,7 @@ class LeRobotSingleDataset(Dataset):
         data = {}
         # Get the data for all modalities # just for action base data
         self.curr_traj_data = self.get_trajectory_data(trajectory_id)
-        # TODO @contributor The logic below is poorly implemented. Data reading should be directly based on curr_traj_data.
+
         for modality in self.modality_keys:
             # Get the data corresponding to each key in the modality
             for key in self.modality_keys[modality]:
@@ -1377,7 +1377,7 @@ class LeRobotSingleDataset(Dataset):
         """
         # Get the step indices
         step_indices = self.delta_indices[key] + base_index
-        # print(f"{step_indices=}")
+
         # Get the trajectory index
         trajectory_index = self.get_trajectory_index(trajectory_id)
         # Ensure the indices are within the valid range
@@ -2036,7 +2036,7 @@ class LeRobotMixtureDataset(Dataset):
         # )
         # trajectory_id = dataset.trajectory_ids[trajectory_index]
 
-        # # Sample step
+
         # base_index = rng.choice(dataset.trajectory_lengths[trajectory_index])
         # return dataset, trajectory_id, base_index
         single_step_index = rng.choice(len(dataset.all_steps))
@@ -2264,23 +2264,24 @@ class LeRobotMixtureDataset(Dataset):
                                 else:
                                     future_wrist_views.append(future_image)
                     future_images = future_prim_images + future_wrist_views
-                except Exception:
-                    if future_video_delta_indices is not None:
-                        raise
-                    future_images = all_images
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"Future-frame read failed for trajectory={trajectory_id}, step={step}; "
+                        "refusing to replace its target with the current observation"
+                    ) from exc
 
                 # Get language data. Format as: Task: ... Subtask: ... Speed: ... Mistake: ... Control Mode: ...
                 trajectory_index = dataset.get_trajectory_index(trajectory_id)
                 trajectory_length = dataset.trajectory_lengths[trajectory_index]
                 language = self._build_language_instruction(dataset, data, trajectory_length)
-                # print(dataset.modality_keys["language"], language)
+
 
                 # Get action data: check if ConcatTransform has been applied
                 # if "action" in data and not any(k.startswith("action.") for k in data.keys()):
                 # Actions have been concatenated
                 action = data["action"].astype(np.float16)
                 # else:
-                #     # Individual action keys
+
                 #     action = []
                 #     for action_key in dataset.modality_keys["action"]:
                 #         action.append(data[action_key])
@@ -2290,7 +2291,7 @@ class LeRobotMixtureDataset(Dataset):
                 # Actions have been concatenated
                 action_mask = data["action_mask"].astype(np.float16)
                 # else:
-                #     # Individual action keys
+
                 #     action_mask = []
                 #     for action_key in dataset.modality_keys["action_mask"]:
                 #         action_mask.append(data[action_key])
@@ -2518,9 +2519,9 @@ class LeRobotMixtureDataset(Dataset):
                 weighted_q99 = np.average(q99_array, axis=0, weights=normalized_weights).tolist()
                 # std_q01 = np.std(q01_array, axis=0).tolist()
                 # std_q99 = np.std(q99_array, axis=0).tolist()
-                # print(modality)
-                # print(f"{std_q01=}, {std_q99=}")
-                # print(f"{weighted_q01=}, {weighted_q99=}")
+
+
+
             elif percentile_mixing_method == "min_max":
                 weighted_q01 = np.min(q01_array, axis=0).tolist()
                 weighted_q99 = np.max(q99_array, axis=0).tolist()

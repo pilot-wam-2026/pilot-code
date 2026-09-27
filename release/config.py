@@ -13,7 +13,10 @@ def read_mode_config(pretrained_checkpoint):
     if checkpoint.suffix != ".pt":
         raise ValueError("Expected a .pt checkpoint.")
     run = checkpoint.parents[1]
-    config = OmegaConf.to_container(OmegaConf.load(run / "config.yaml"), resolve=True)
+    config_path = run / "config.full.yaml"
+    if not config_path.exists():
+        config_path = run / "config.yaml"
+    config = OmegaConf.to_container(OmegaConf.load(config_path), resolve=True)
     with (run / "dataset_statistics.json").open() as stream:
         statistics = json.load(stream)
     return config, statistics

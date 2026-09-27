@@ -2,7 +2,7 @@
 
 ## Checked On September 27, 2026
 
-The local portable source passed 18 CPU tests using Python 3.10.21 and
+The local portable source passed 19 CPU tests using Python 3.10.21 and
 PyTorch 2.8.0 on macOS. The tests cover:
 
 - The two native Diffusers latent conventions and explicit checkpoint coordinates.
@@ -16,10 +16,18 @@ PyTorch 2.8.0 on macOS. The tests cover:
 - Rejection of same-size corruption in materialized component caches.
 - Safe archive paths, parent symlinks, overwrite refusal, and executable modes.
 - Python source syntax and the absence of private machine bindings in launchers.
+- Separate Hub ignore rules that retain model weights and simulator archives.
 
 The selected framework, policy transport, resume validator, and
 `Cosmos2_5_PredictBasePipeline` also imported successfully in the local CPU
 environment. No complete model was constructed by that check.
+
+The full 23,913,608,021-byte checkpoint passed SHA-256 verification against
+the source file. All 45,853 simulator/robot resource files matched the
+source hashes before the two documented local path relocations.
+`release.prepare` then completed on the local CPU and reconstructed the
+four constructor component files directly from the selected checkpoint.
+These checks do not constitute a GPU model forward pass.
 
 The policy, simulation, and training requirement sets resolved against
 PyPI metadata for a Linux x86_64 / Python 3.10 target. Resolving the

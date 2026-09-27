@@ -82,3 +82,10 @@ runtime_assets/GR1T2/GR1T2_fourier_hand_6dof.urdf
 
 The customized environment is not interchangeable with a generic current
 RoboCasa wheel. Legal notices in these directories must remain intact.
+
+The archived resources include the simulator code as well as its meshes,
+textures, XML, and robot description. They are not only environment-variable
+settings. Two unused USD conversion tools have locally parameterized path
+defaults; these changes and the original/new file hashes are recorded in
+`environment/resource_manifest.json`. The MuJoCo evaluation code and
+assets are otherwise byte-identical to the verified source inventory.

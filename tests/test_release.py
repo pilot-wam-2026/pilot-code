@@ -17,6 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_hub_does_not_ignore_release_payload(self):
+        rules = (ROOT / "release/huggingface.gitignore").read_text().splitlines()
+        for required in ("checkpoints/", "archives/", "environment/resource_manifest.json"):
+            self.assertNotIn(required, rules)
+        self.assertIn(".runtime/", rules)
+        self.assertIn("*.partial", rules)
+
     def test_selected_checkpoint(self):
         manifest = json.loads((ROOT / "release_manifest.json").read_text())
         self.assertEqual(manifest["checkpoint_step"], 340000)

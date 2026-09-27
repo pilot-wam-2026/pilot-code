@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.partial
+*.log
+.DS_Store
+._*
+.runtime/
+.cache/
+.venv/
+outputs/
+.env
+.env.*
+LOCAL_STATUS.md

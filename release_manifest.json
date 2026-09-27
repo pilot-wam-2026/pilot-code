@@ -63,7 +63,7 @@
     "gr1_unified/PosttrainPnPNovelFromTrayToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env"
   ],
   "validation_status": "cpu_release_checks_passed_linux_cuda_portability_unverified",
-  "publication_status": "local_candidate_not_uploaded",
+  "release_date": "2026-09-27",
   "evaluation_protocol": {
     "tasks": 24,
     "episodes_per_task": 50,

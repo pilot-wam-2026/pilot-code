@@ -12,7 +12,24 @@ currently under review.
 [Model and simulation resources](https://huggingface.co/mxk1998/WM4A) |
 [Evaluation guide](docs/EVALUATION.md) |
 [Training guide](docs/TRAINING.md) |
+[Evaluation logs](docs/LOGS.md) |
 [Validation status](docs/VALIDATION.md)
+
+**Release status (September 30, 2026):** code and sanitized logs are public.
+The original 340000 checkpoint and customized RoboCasa resources are uploaded
+to a **private** Hugging Face repository. Authorized range downloads passed;
+anonymous downloads are not available. See [access and integrity](docs/DOWNLOAD.md).
+
+## Start Here
+
+| Goal | Entry point |
+|---|---|
+| Inspect and verify the recorded score without a GPU | [Logs and CPU evidence audit](docs/LOGS.md) |
+| Download weights and the exact simulator | [Download, permissions and checksums](docs/DOWNLOAD.md) |
+| Build policy/simulation environments | [Linux installation and variables](environment/README.md) |
+| Run one episode or all 24 tasks | [Evaluation protocol and outputs](docs/EVALUATION.md) |
+| Fine-tune, initialize from pretrained components, or resume | [Training/data guide](docs/TRAINING.md) |
+| Understand what is and is not validated | [Validation status](docs/VALIDATION.md) |
 
 ![PILOT architecture from the supplied manuscript](docs/assets/method.svg)
 
@@ -66,6 +83,7 @@ checkpoint compatibility. They are not alternative release names.
 ```bash
 git clone https://github.com/pilot-wam-2026/pilot-code.git
 cd pilot-code
+python3 -m release.audit_logs  # No Torch, GPU, checkpoint or HF login needed.
 ```
 
 ### Complete Model And Simulator Bundle
@@ -88,7 +106,9 @@ python -m release.verify --assets
 
 The Hugging Face repository ID remains **`mxk1998/WM4A`**; its project name
 and released artifact are **PILOT**. Repository visibility is not changed
-by the release scripts.
+by the release scripts. Login requires an account already granted access.
+For downloading only weights/assets into a GitHub checkout without replacing
+its code or documentation, use [Download Option B](docs/DOWNLOAD.md#option-b-github-code-plus-only-the-large-resources).
 
 Checkpoint SHA-256:
 
@@ -180,6 +200,15 @@ The validated source run audited all 1200 episodes, their initial seeds
 and IK-cache resets, and all 72000 action-request seeds and hashes. It did
 not terminate successful episodes early.
 
+The [published evaluation archive](results/evaluation_340000_logs.tar.gz)
+contains all 24 sanitized simulator logs and task results, 1200 episode
+diagnostics, and a source provenance report. Run `python3 -m release.audit_logs`
+to verify its hashes and recorded counts without a GPU. The archive does
+not include the raw per-request action streams; the source provenance check
+and the public consistency check are different verification levels.
+See [logs, redactions and omissions](docs/LOGS.md) and the
+[historical training metrics](results/training_metrics_340000.csv).
+
 ## Train Or Fine-Tune
 
 Install the additional training dependencies:
@@ -194,7 +223,8 @@ Example **weight-only fine-tuning** from the supplied checkpoint:
 export CUDA_VISIBLE_DEVICES=0
 export PILOT_DATA_ROOT=/absolute/path/to/converted-datasets
 export PILOT_OUTPUT_ROOT=/absolute/new/training-runs
-bash run_training.sh --trainer.max_train_steps 1000
+bash run_training.sh --trainer.max_train_steps 1000 \
+  --trainer.save_interval 500 --trainer.logging_frequency 50
 ```
 
 This initializes a **new optimizer**. It is not recovery of the historical
@@ -237,15 +267,16 @@ deployment/          WebSocket policy transport
 examples/            RoboCasa-GR1 interface, IK, seeding and physical-step scoring
 release/             Preparation, preflight, evaluation and verification commands
 environment/         Pinned environments, KDL build and portable environment variables
-results/             Sanitized numerical evaluation summary
+results/             Evaluation logs, 1200-episode audit and historical training metrics
 docs/                Evaluation, training and release documentation
 checkpoints/         Full checkpoint (Hugging Face/local bundle only)
 third_party/         Simulator sources/assets (Hugging Face/local bundle only)
 runtime_assets/      GR1 retarget URDF (Hugging Face/local bundle only)
 ```
 
-Raw training logs, private paths, credentials, dataset contents, and unrelated
-experiments are excluded from the publication.
+Unsanitized logs, private paths, credentials, dataset contents, and unrelated
+experiments are excluded. Published log redactions and omitted fields are
+documented rather than represented as untouched raw evidence.
 
 ## Attribution And License
 

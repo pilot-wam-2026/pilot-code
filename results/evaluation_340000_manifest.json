@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "checkpoint_step": 340000,
+  "checkpoint_sha256": "34bf115c1c99a33b12c79e1dca20e596cd510f006060687c2f145fecea58e60e",
+  "archive": "evaluation_340000_logs.tar.gz",
+  "archive_sha256": "53424e662de335871e6a5b34577629afb381306784d2f6d8d472cf08ef45c90a",
+  "archive_bytes": 1932308,
+  "original_private_archive_sha256": "f7c14f3da4bfc80e2d8e22a1b7c4bffa80a515210957e0414bf414fb2305ebb1",
+  "files": {
+    "training_metrics_340000.csv": {
+      "bytes": 91791,
+      "sha256": "c45210f78947bdc0b92bef21860bfc02c531301583c8d1db3346948da00a4a3d",
+      "original_member_sha256": "44c2d2bd88d9a481dc943ec240cf3c1b3f150c2ec593e28368e3d46d7824e0ed"
+    },
+    "tasks/gr1_unified_PnPCupToDrawerClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82599,
+      "sha256": "5adfd85f489a4c2f04cc7256643de7ad2fb939f87442789a3b8e07954160499f",
+      "original_member_sha256": "b5ff4a773872757babde94243e209d0c3cc13cf69109b902f1892c4c666486a2"
+    },
+    "tasks/gr1_unified_PnPCupToDrawerClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 697,
+      "sha256": "df0038732e35aecdb7daf32e16597bf444c324851666a9d6bc9f975a172198f3",
+      "original_member_sha256": "6575bf7797e708d0110feb1d4849235f97108885e54429c0da2a2d7b32310671"
+    },
+    "tasks/gr1_unified_PnPMilkToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82607,
+      "sha256": "08cc923138d1f0223abfacb753b81ee58e307cccf58e239ff0ab3c871c266313",
+      "original_member_sha256": "0b6b6390d73145e41268a0d492d8a9ac0eaa585ab6b0c5d22fbf9e7cdba72fb5"
+    },
+    "tasks/gr1_unified_PnPMilkToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 700,
+      "sha256": "77a649b4acfd0b551bbd288e51ad1e4f62e41816269e5f82beaaa290407ea723",
+      "original_member_sha256": "3267b1e2d13cadf6499dee72226849ab200d42ea05abb286f056f81dc1c44a3b"
+    },
+    "tasks/gr1_unified_PnPWineToCabinetClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82608,
+      "sha256": "0d81dd30ec5e2a91ad4c235372d3caf6c2bc1c587847e37c292f323f19079c3b",
+      "original_member_sha256": "b7ca07bbfbbd1e14db0afafe9cb2580f0690f19fbd384826f6f2a2773e7ff351"
+    },
+    "tasks/gr1_unified_PnPWineToCabinetClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 699,
+      "sha256": "3a5c311303556be0f916868d9a13baec2db046b3c55d74260af7405f34ffd98a",
+      "original_member_sha256": "0ea1082e6be15427e4eb3ecb2610601d835cdc08218dca0b487d1b22fec6a4a6"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToBasketSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82709,
+      "sha256": "f86c67fccaf8d068a82da4f097bc602aa1c4ed4eb31cbfec6c15f75d3e605f9f",
+      "original_member_sha256": "ecee687ba6740e435b8725e9e679b8a66db6839cbd7fdb56b24477da7c94483b"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToBasketSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 725,
+      "sha256": "99660e35b5f8a86ca4a6abdd17c29b74b4688318d72fc00211ad825b9537cd91",
+      "original_member_sha256": "5b2f7debe37b061384fb428c8d0d5cff997033646ffe8dbd830182d8417bc761"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToPanSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82637,
+      "sha256": "c877531d2bc3e37ea9cc9deeebf7affc6e8d597f6b0890919d3de096602e8408",
+      "original_member_sha256": "09d16847106b41ea4b7671d38efd0ce18d0827a34b96d0fe9788e8905dea23d1"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToPanSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 721,
+      "sha256": "3dd517af96693b8e848eeedad73f8fb71dac76ccb8f36b3eec1b0f258f8b7b27",
+      "original_member_sha256": "1b0be121c91ead37c9fc94c11979cedb822f8a6bcf108452eba8749630ea5e49"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToTieredbasketSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82707,
+      "sha256": "5fe5d1f1fcbbb6724fc7352bf3bfeebc1fea06566544ba3785eaa1669cefa11b",
+      "original_member_sha256": "de11aebea4f27ac3540fa707e8338fd50e156a3d98864b13cc9d4222af63d55f"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToTieredbasketSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 731,
+      "sha256": "8eee16b2e8551dba348fa19d9560cf6da0cf8283dce6d0ae13bba6e544c4b2e2",
+      "original_member_sha256": "709261e4a758586db4eeff26ce51eadc2ed559755ed6875b6b750e0bc824164d"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToBowlSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82693,
+      "sha256": "3eb83c313cf375e0b42e6f74ca86928a1b46976633d021d7328b8d8ef249f137",
+      "original_member_sha256": "7d7d4a65b1af1a5aa58e0173dd2deaa052c7f58f2e5477f4fe15792626db4526"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToBowlSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 718,
+      "sha256": "242fff241d6480b7530a4759954a7a54a5c921dc2077c5691e22589214ed6c29",
+      "original_member_sha256": "7b58fe788bef33d73078c4201d5a0c60e5e4cfb857889301fb0a41a87ff96667"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82784,
+      "sha256": "ee44ec631beb70d2944f9afe3facda364d0f6c755437053f956dea20891b7640",
+      "original_member_sha256": "0e0bd805f32a5895a5fd5b476936ba92f2da4155a1f2961378c9ca82933fbec2"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 725,
+      "sha256": "aec06f6214b5e3b706cd13f06fef74ff51ad3b5ceaa2181e30529618de033de3",
+      "original_member_sha256": "82b9e8b73ef212ba7788789fa2f423c48dbeded9f560a8ef9d6d71587dae1bc9"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82667,
+      "sha256": "0ea71b3129be5ecc96b0c241c6fd6143e26a3cd1f02e0c48f2311e6b6c44d170",
+      "original_member_sha256": "dff8cbc13305ee57f8991a1f125c57430d1fafadea85b9cbe32dbff70ccad727"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 724,
+      "sha256": "f625b27234f1112b46bf8ad8929c91d2b64b0ae9eaa403205af64bdf3dec4927",
+      "original_member_sha256": "81f997e800ef9d5694e7af98d72596248bfe53a6c1890e7de4b9b98e9bd18411"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82627,
+      "sha256": "d1beb829bde8d0daac4c813d4a07adcb9b27031d486ce8768a6441eec855971b",
+      "original_member_sha256": "a014fdd907df7bccf2e24bdabef04f1bc42a4f8f988c53ab01bb85ff7cb77db4"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 716,
+      "sha256": "36af60b08fe5b408e252713583b86154e725c9063e18ffbd38002d13b159e4c9",
+      "original_member_sha256": "d303aa658d453fdedc683659bd5ef20ac7094c60ab6e8682dd81fc9a3aaaf6d4"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82964,
+      "sha256": "5499b90cdbfce4f9b9412f7dadcfd01e37d6d3a2f6d469c6f6096c1d0f9677f1",
+      "original_member_sha256": "814fafb07867473f2065022ba17dcde7585e3e8e12ae2f06cc2e7306a06a56e1"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 715,
+      "sha256": "d5c55f3a93bca857c667a24cb02257ab2f2bb5214ea0840a9000d1a9c99b7108",
+      "original_member_sha256": "9ab06c429760f7bb2caf2d9ec031317fa14a11a83df25f5c95ef34d5d74b7c38"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToTieredbasketSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82712,
+      "sha256": "b8c4fc4ba6adbd06db5eefd4d51c43d5f4742c0f1a09bab055d3159bd0c2fcb8",
+      "original_member_sha256": "de46cbd5e58aa686e0ee4ed317b6b842d7784bfb722bf92645e55b01a9ff3352"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToTieredbasketSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 723,
+      "sha256": "ecb9bda14d2717718ce0ee5aacf685ddf95389d1f7307f1f597d4e4a335847a9",
+      "original_member_sha256": "75d7fa2511024a15a7ddd46466add7fe68983e18ca0140d603cdf30cca40d530"
+    },
+    "tasks/gr1_unified_PnPPotatoToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82609,
+      "sha256": "86e626e61f3048849475c438f87111aac7eff938d797e7be293953194b9e9517",
+      "original_member_sha256": "ed9dabd0d92ae984517a25b9e9158d1685727892d2da1dc03e7ae226ee48e266"
+    },
+    "tasks/gr1_unified_PnPPotatoToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 703,
+      "sha256": "9ac59c9bc65f66150beda748397231318cf3f228ed225e3c1dcf9763924a0023",
+      "original_member_sha256": "01fce9328693242c6377b37b8bcd6452f4ed95f7d6e2da74eca92fa4450eed92"
+    },
+    "tasks/gr1_unified_PnPBottleToCabinetClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82606,
+      "sha256": "45dac6cd077590dd41b27d6efda8da6b2a8a0939afc133312cc4ab03774f6046",
+      "original_member_sha256": "290afe9a01b4cd4a1a2eed8fa47ce47b741e07b1bff749d96f63b6ef7d4b183d"
+    },
+    "tasks/gr1_unified_PnPBottleToCabinetClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 701,
+      "sha256": "743ecd6d95e464c9075a0a1526386134f5eb2f379c2ab29c5e04d92f25f779ff",
+      "original_member_sha256": "42cb191d9607844a9b5a87feef9b7b5defeb258eb63e5a713844f201636ababd"
+    },
+    "tasks/gr1_unified_PnPCanToDrawerClose_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82585,
+      "sha256": "201bd9205ef1966e7f47f63710245e7345568334ea4217b081ed66a2d91341ca",
+      "original_member_sha256": "a3fdae3af45e6f50a97fbb17cace86d222cf2207c669b061458aa33fa58413a5"
+    },
+    "tasks/gr1_unified_PnPCanToDrawerClose_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 697,
+      "sha256": "62e3b51227a91df40af79e0ba23d911a96c03b38445655282f27787a6b0d77e8",
+      "original_member_sha256": "d0c420071623a44750ad92c62b7cb63829fd9acd62f1d360adf44007b4490505"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82709,
+      "sha256": "32c15e83502401fadfb59ad7f33cc9c1f020443d4b3fc491760fe295f42395af",
+      "original_member_sha256": "609c0111a4bc95e8c3b45cc93de2fe6daece127a5b1983e43e9c408ff07f597e"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 731,
+      "sha256": "b346d05b7df766d13bf5035793fc62416985d0ba2ae1fefd3d8d1d9bc9cd6b79",
+      "original_member_sha256": "1d4a7d1523452c8a79759071178f702a5c61c9b2a6956dd60c25425f8cf49e62"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToPotSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82636,
+      "sha256": "037daf4965b0f0335a5ef8ed8c700803fc4c1bfc2531fb9a912abd0d117531b3",
+      "original_member_sha256": "8d3a8a8c528e4b0b4337b8e12e7bd5d46f4abbe1a3bbc1c14d9b6555aa570cc3"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromCuttingboardToPotSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 722,
+      "sha256": "2d337f7fb1c46b905075fe27618427e74642ab8fffb2ea902ccf9994b8313d61",
+      "original_member_sha256": "d69c2c3c6009ff842699df9495ce0f80a3d73c697bc87eb9a6dacea6256bb998"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToBasketSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82699,
+      "sha256": "995aba1cedc20fd74b85b0f098e950cb117727eeb7e88cfd6f0388a3bfc09100",
+      "original_member_sha256": "211c14fc916c791dfaa243c5bb2da6fb1e2fe9f49201e0b077e037a9c4b82f9c"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToBasketSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 721,
+      "sha256": "24361c29a2d0829fbb73c668a19b40b41906b21068ae7974d9bfdc05eca25002",
+      "original_member_sha256": "b5f8d7e1ec1205752a9e8314cea9ce6b724de2f4de525b3e2b480d275b50ead5"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82711,
+      "sha256": "f98bbb16a1f0b5def47e43933f711a4c94eee8dad7051b159964e4c94704f7d6",
+      "original_member_sha256": "55b84423d44c14fee261e06d1369f2ba9e131bdca4a6d27aaf6ee9a641b11fb1"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlacematToPlateSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 720,
+      "sha256": "5c8371a37b2d957a8805969bc8dca7cd043d92636e7ffd5f0a940e5c1f05c525",
+      "original_member_sha256": "d6b901331c7cfd38d4a2ae822ec3b93f55559947b2d7e99551d51e1fe7d5d271"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToBowlSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82693,
+      "sha256": "a5ac08fc43b4b980750c0d6f5a75001e3211d80acf838a4e484fd9c6ef66b043",
+      "original_member_sha256": "7ab147ee23f382d779f4cc2730c7ae1946d6798a66e23d2ea8949e95d081c6fb"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToBowlSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 716,
+      "sha256": "612f749be4e17eb058f161fa69a6539e3cefe93c7944eec3e3160430feb0c47c",
+      "original_member_sha256": "66db5cec709a2f190fdda319a29e5a51e1b3d2b9b72e34c6745f4cb198d1fa7e"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToPanSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82635,
+      "sha256": "9d970c145afdd2462ca64e250a8d4a0600f3efca662aa5bd5b96bf33cbe1418a",
+      "original_member_sha256": "818c8fb65337333dae20e1810e991e3431e5bb7f4a773ee6823cf912269a5c3d"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromPlateToPanSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 715,
+      "sha256": "ad82339e74e3c781408cc3b5ab297cb2256b1974fdd17767b3914708d88ea57e",
+      "original_member_sha256": "ae5ce5c539ec88f1838a1d1054b0416367837b51f0f2271a992031734d1d26e5"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 90553,
+      "sha256": "8c34ef0e02ff65fae0ca6c8e66c621a5184543041fe5c4577d193eb4995a8d8f",
+      "original_member_sha256": "9d46e90ef815927266b88e6b46821c363a17e9f88c2bd9bdee683bacf30a0cd1"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToCardboardboxSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 723,
+      "sha256": "85a645d8eec332078f938ca20e58f1400e3954a281cad973455fada50be0cad0",
+      "original_member_sha256": "57a06bcd2bb822a55103549dcfe45479269fbe32d22fc6d7d5aef4dee3eae286"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToPotSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82660,
+      "sha256": "5a79ca4346e74c517ee241ff42569e1bc02df4bd25877aba322f6fadc19bd005",
+      "original_member_sha256": "91848e111815ba23653dbc682fe5340a4383f3a971d9aa626f3331a53128dae9"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToPotSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 714,
+      "sha256": "a1b79a13faa009ed3bb8577be521ee7f83c923632bb0e572aa781c498572cb3e",
+      "original_member_sha256": "be109e24e9225833ce6538a832aacaab0070b77a78c76b45414714e5c664f902"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env/simulation.log": {
+      "bytes": 82768,
+      "sha256": "7c81af2b372175b21e76294534cbd16ec90cc95860a318dcb403ca32c8f3d652",
+      "original_member_sha256": "0f60345502d186061af13a2afcde5d3cf6db17d93484e18ad278341a9956cd90"
+    },
+    "tasks/gr1_unified_PosttrainPnPNovelFromTrayToTieredshelfSplitA_GR1ArmsAndWaistFourierHands_Env/result.json": {
+      "bytes": 722,
+      "sha256": "42e6cb8c476c48078deb533657e39ab3d010a10deac2ffbc01ea10472065e382",
+      "original_member_sha256": "9959fd1da06830c3a1cab2339d6b4143a19b58d5a53b2e87727c07b042f70773"
+    },
+    "benchmark_final_audit.json": {
+      "bytes": 10673250,
+      "sha256": "dcff6750eec5735093f061b4616368e5d527e8e8bcb4cd51cca774afde3493d3",
+      "original_member_sha256": "a27799ee33d94fe3f157457ff99336e92c971aa86dc1cc4dd0ca88cb52f4c44c"
+    },
+    "source_provenance.json": {
+      "bytes": 10688,
+      "sha256": "477e9db26fd36aef7ee22a0ec7b97e28a5e8b4092a6bec58083fca27ab13c52e",
+      "original_member_sha256": "477e9db26fd36aef7ee22a0ec7b97e28a5e8b4092a6bec58083fca27ab13c52e"
+    }
+  },
+  "redactions": {
+    "terminal_escape": 96,
+    "checkpoint_root": 97,
+    "simulation_root": 72,
+    "result_root": 24,
+    "environment_root": 48,
+    "host": 48,
+    "process_or_port": 96
+  },
+  "training_metric_rows": 680,
+  "scope": "Sanitized source-run evidence, not a fresh simulation or model inference.",
+  "omissions": [
+    "Private training preamble and raw progress output; all updates after 340000.",
+    "Policy/server/supervisor logs and host/process manifests.",
+    "Raw action_requests.jsonl, episodes.jsonl, physical-step streams and videos are not in the supplied log archive."
+  ]
+}

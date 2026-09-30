@@ -1,5 +1,21 @@
 # Release Validation
 
+## Documentation And Evidence Update: September 30, 2026
+
+All **25 CPU tests** passed in the local Python 3.10 / PyTorch 2.8
+environment, including the original 19 tests and six evidence tests.
+The added tests cover the complete 51-file archive, corruption, wrong
+scene seeds, changed success counts, missing episodes, and unsafe tar paths.
+The standard-library evidence audit independently recomputes 717/1200,
+712 block-end successes and 637 final-step successes from the published
+recorded logs/diagnostics, and validates 680 training metric rows.
+
+These are recorded-data checks, not a new GPU run. The archive omits the
+raw request/physical-step streams, so source provenance assertions about
+their hashes cannot be independently repeated using only this archive.
+The detailed limits below remain unchanged. No model computation or
+checkpoint tensor was changed by this documentation/evidence update.
+
 ## Checked On September 27, 2026
 
 The local portable source passed 19 CPU tests using Python 3.10.21 and

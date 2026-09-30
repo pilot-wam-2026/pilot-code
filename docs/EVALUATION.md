@@ -61,6 +61,22 @@ Smoke tests are not full benchmark measurements.
 
 ## Outputs
 
+### Changing Run Size
+
+All commands run from the release root after installation and preparation.
+Use `--task` once for a single task, or repeat it to select several.
+Omitting `--task` evaluates all 24. Use `--workers-per-policy 1` to reduce
+simulator concurrency and one policy GPU if that is your safe allocation.
+Changing seeds, episodes, action settings or scoring changes comparability
+with the recorded result; a one-episode run is only a smoke test.
+
+Use `--port 19500` if the default loopback policy ports are already occupied.
+Do not terminate an unrelated service to free its port. For another
+`release.prepare --cache` location, supply the corresponding
+`--checkpoint <cache>/run/checkpoints/model.pt` path explicitly.
+
+### Files Written
+
 ```text
 gpu_admission.json
 server_gpu<N>.log
@@ -82,7 +98,36 @@ SHA-256 hashes for replay checks.
 
 Raw runtime logs may contain local paths and process information. Review
 them before public redistribution. The bundled `results/` directory
-contains only sanitized aggregate numerical evidence.
+contains a sanitized original-run log archive, numerical summary, and
+historical training metrics; see [published evidence](LOGS.md).
+
+To check a newly completed full run:
+
+```bash
+export PILOT_EVAL_OUTPUT=/absolute/new/pilot-evaluation
+python3 - <<'PY'
+import json, os
+from pathlib import Path
+result = json.loads((Path(os.environ["PILOT_EVAL_OUTPUT"]) / "summary.json").read_text())
+assert result["complete"] is True, "Run is incomplete"
+assert result["protocol"] == "wm4a_contract_v2_any_physical_step"
+assert len(result["task_results"]) == 24
+assert result["episodes"] == 1200
+assert result["seed"] == 9000 and result["episodes_per_task"] == 50
+assert result["successes"] == sum(x["successes"] for x in result["task_results"])
+print(f'{result["successes"]}/{result["episodes"]} = {100 * result["success_rate"]:.2f}%')
+PY
+```
+
+This checks run completeness, not equivalence of model hashes or every
+physical transition. Preserve the checkpoint hash, configurations and
+full output directory. Do not require a new run to equal 717 successes
+and silently discard runs that do not.
+
+An interrupted evaluation is not automatically resumed into the same
+directory. Keep its diagnostic outputs, choose a new directory, and rerun
+the intended protocol. Do not merge duplicate or mismatched-seed tasks
+into a claimed 1200-episode benchmark.
 
 ## Optional Future Visualization
 

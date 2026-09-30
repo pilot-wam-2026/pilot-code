@@ -32,6 +32,54 @@ training data.
 
 ## Artifact Configuration
 
+### Dataset Layout Check
+
+`PILOT_DATA_ROOT` is the directory **above**
+`PhysicalAI-Robotics-GR00T-Teleop-Sim`, not an individual task directory:
+
+```text
+$PILOT_DATA_ROOT/
+  PhysicalAI-Robotics-GR00T-Teleop-Sim/
+    LeRobot_eepose/
+      gr1_unified.PnPBottleToCabinetClose_ee/
+        meta/modality.json
+        meta/info.json
+        meta/episodes.jsonl
+        meta/tasks.jsonl
+        data/<chunk>/<episode>.parquet
+        videos/...
+      ... (all 24 task directories)
+```
+
+The loader reads modality mappings and video paths from metadata; directory
+names alone do not validate action semantics. This lightweight check lists
+all expected tasks and rejects missing roots/required metadata:
+
+```bash
+"$POLICY_PYTHON" - <<'PY'
+import os
+from pathlib import Path
+from starVLA.dataloader.gr00t_lerobot.mixtures import DATASET_NAMED_MIXTURES
+root = Path(os.environ["PILOT_DATA_ROOT"])
+missing = []
+for name, weight, embodiment in DATASET_NAMED_MIXTURES["robocasa_teleop_ee"]:
+    path = root / name
+    print(name)
+    for relative in ("meta/modality.json", "meta/info.json"):
+        if not (path / relative).is_file():
+            missing.append(str(path / relative))
+if missing:
+    raise SystemExit("Missing dataset files:\n" + "\n".join(missing))
+print("24 dataset roots found; decoding and EE/state semantics still need validation.")
+PY
+```
+
+Do not treat unconverted joint-space demonstrations as the required EE-pose
+data. This release does not include a verified raw-data conversion pipeline,
+dataset redistribution permission, or all training demonstrations.
+
+### Selected Hyperparameters
+
 | Parameter | Archived selected-run value |
 |---|---|
 | Seed | 42 |
@@ -72,7 +120,12 @@ export POLICY_PYTHON=/absolute/path/to/policy/bin/python
 export CUDA_VISIBLE_DEVICES=0
 export PILOT_DATA_ROOT=/absolute/path/to/converted-datasets
 export PILOT_OUTPUT_ROOT=/absolute/new/pilot-training
-bash run_training.sh --trainer.max_train_steps 1000
+unset PILOT_RESUME_STATE PILOT_FROM_PRETRAINED
+export PILOT_RUN_ID=pilot_finetune_1000
+set -o pipefail
+bash run_training.sh --trainer.max_train_steps 1000 \
+  --trainer.save_interval 500 --trainer.logging_frequency 50 \
+  2>&1 | tee "$PILOT_OUTPUT_ROOT.console.log"
 ```
 
 The original 340000 checkpoint initializes the full model, while the
@@ -84,6 +137,7 @@ provide their locally available, licensed initialization files:
 
 ```bash
 export PILOT_FROM_PRETRAINED=1
+unset PILOT_RESUME_STATE
 export PILOT_COSMOS_ROOT=/absolute/path/to/original/Cosmos-Predict2.5-2B-Post-Trained
 export PILOT_VJEPA_CHECKPOINT=/absolute/path/to/original/vjepa2-ac-vitg.pt
 bash run_training.sh
@@ -92,6 +146,20 @@ bash run_training.sh
 Do not point these variables at the components materialized from 340000
 and describe that as training from the original pretrained initialization.
 No unattended long-running training job is started by downloading the release.
+
+## Initialization Modes
+
+| Mode | Input | Optimizer/counter |
+|---|---|---|
+| Default fine-tuning | Prepared 340000 weight export | New optimizer; counter starts at zero |
+| Original-pretrained initialization | Licensed original Cosmos and VJEPA files, `PILOT_FROM_PRETRAINED=1` | New optimizer; counter starts at zero |
+| Exact repaired-trainer resume | Complete `*_training_state` directory | Restore optimizer, scheduler, RNG and data progress |
+
+Choose exactly one mode and use a new `PILOT_RUN_ID`/output location.
+These examples do not run the historical 340000 updates again.
+The example keeps the archived 2000-step warmup, so a 1000-update smoke run
+stays within warmup. A different schedule is a new training experiment,
+not an exact continuation of the archived run.
 
 ## Full-State Resume
 
@@ -102,6 +170,8 @@ and a completion manifest.
 ```bash
 export PILOT_RESUME_STATE=/absolute/path/to/previous-run/checkpoints/steps_500_training_state
 export PILOT_OUTPUT_ROOT=/absolute/new/resumed-run-root
+unset PILOT_FROM_PRETRAINED PILOT_INITIAL_CHECKPOINT
+export PILOT_RUN_ID=pilot_resume
 bash run_training.sh
 ```
 
@@ -110,6 +180,30 @@ initialization at the same time. Incomplete saves, changed training semantics,
 and changed dependency versions are rejected. Exact data replay is supported
 only by the validated single-rank/stateful-loader configuration; unsupported
 worker and multi-rank settings must not be described as exact continuation.
+
+## Outputs And Checkpoints
+
+The run lives at `$PILOT_OUTPUT_ROOT/$PILOT_RUN_ID`. It retains the launcher,
+configuration, normalization statistics, weight exports and separate
+`steps_*_training_state` directories. Full-state saves include a completion
+manifest; do not copy or resume a directory while it is still being written.
+The example explicitly saves at updates 500 and 1000. The archived default
+`save_interval=10000` would not produce a scheduled checkpoint in a
+1000-update smoke run.
+
+Console output is captured separately in the example above. Choose an
+existing writable parent for that console-log path and a fresh filename
+for every experiment. W&B reporting is disabled by the launcher.
+For the source checkpoint's original training metrics through update
+340000, see [the published CSV and extraction scope](LOGS.md#training-metrics).
+
+The strict `release.prepare`/`release.verify` commands intentionally target
+the original benchmark checkpoint hash. Do not overwrite its file or
+manifest with newly trained weights. Evaluation can accept an explicit
+`--checkpoint /absolute/run/checkpoints/steps_N_pytorch_model.pt` from a
+compatible repaired run, with its colocated configuration/statistics.
+A new checkpoint requires its own smoke test and benchmark; it does not
+inherit the released model's 59.75% score.
 
 ## Validation Limits
 

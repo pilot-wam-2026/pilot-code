@@ -3,8 +3,8 @@
   "checkpoint_step": 340000,
   "checkpoint_sha256": "34bf115c1c99a33b12c79e1dca20e596cd510f006060687c2f145fecea58e60e",
   "archive": "evaluation_340000_logs.tar.gz",
-  "archive_sha256": "53424e662de335871e6a5b34577629afb381306784d2f6d8d472cf08ef45c90a",
-  "archive_bytes": 1932308,
+  "archive_sha256": "63b791fc4c78584cafcc814f569e8b3a2a6065855f854e8ebf04688554baa5db",
+  "archive_bytes": 1932022,
   "original_private_archive_sha256": "f7c14f3da4bfc80e2d8e22a1b7c4bffa80a515210957e0414bf414fb2305ebb1",
   "files": {
     "training_metrics_340000.csv": {
@@ -253,8 +253,8 @@
       "original_member_sha256": "9959fd1da06830c3a1cab2339d6b4143a19b58d5a53b2e87727c07b042f70773"
     },
     "benchmark_final_audit.json": {
-      "bytes": 10673250,
-      "sha256": "dcff6750eec5735093f061b4616368e5d527e8e8bcb4cd51cca774afde3493d3",
+      "bytes": 10673034,
+      "sha256": "a7a839c93f8363611c4279704cdd12cf05086f0299cb0f7efc908a16486ca51b",
       "original_member_sha256": "a27799ee33d94fe3f157457ff99336e92c971aa86dc1cc4dd0ca88cb52f4c44c"
     },
     "source_provenance.json": {
@@ -268,6 +268,7 @@
     "checkpoint_root": 97,
     "simulation_root": 72,
     "result_root": 24,
+    "archive_result_path": 24,
     "environment_root": 48,
     "host": 48,
     "process_or_port": 96

@@ -2,7 +2,7 @@
 
 ## Download And Verify
 
-The public code repository includes a **1,932,308-byte** archive:
+The public code repository includes a **1,932,022-byte** archive:
 [evaluation_340000_logs.tar.gz](../results/evaluation_340000_logs.tar.gz).
 It is also mirrored with the model resources. GitHub access does not
 require Hugging Face access or downloading the 23.91 GB checkpoint.
@@ -36,7 +36,7 @@ Missing/corrupt evidence fails the command instead of producing a score.
 Archive SHA-256:
 
 ```text
-53424e662de335871e6a5b34577629afb381306784d2f6d8d472cf08ef45c90a
+63b791fc4c78584cafcc814f569e8b3a2a6065855f854e8ebf04688554baa5db
 ```
 
 ## Contents
@@ -97,6 +97,8 @@ Archive owners/groups and modification times are normalized.
 Private machine roots are replaced with `${PILOT_ROOT}`, `${SIM_ENV}`, or
 relative `tasks/` paths. Hostnames become `[REDACTED]`; process IDs and
 service ports become `null`. Terminal color escapes are removed.
+The audit JSON's `source` paths point directly to the corresponding
+`tasks/<task_slug>/result.json` members in this public archive.
 Task names, seeds, loss values, numerical diagnostics and success counts
 are preserved. The private originals are not modified.
 

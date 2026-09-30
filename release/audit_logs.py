@@ -63,6 +63,8 @@ def audit_records(payload, reference):
     for task in tasks:
         name = task["task"]
         prefix = "tasks/" + name.replace("/", "_")
+        require(task["source"] == prefix + "/result.json",
+                f"Source member path mismatch: {name}")
         result = json.loads(payload[prefix + "/result.json"])
         lines = payload[prefix + "/simulation.log"].decode().splitlines()
         records = [json.loads(line.split("EPISODE_RESULT ", 1)[1])

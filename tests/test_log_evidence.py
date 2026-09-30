@@ -38,11 +38,17 @@ class LogEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "seed mismatch"):
             audit_records(payload, self.reference)
 
-    def test_changed_success_rejected(self):
+    def test_changed_success_or_source_rejected(self):
         reference = copy.deepcopy(self.reference)
         reference["tasks"][0]["successes"] += 1
         with self.assertRaisesRegex(ValueError, "Success count"):
             audit_records(self.payload, reference)
+        payload = dict(self.payload)
+        audit = json.loads(payload["benchmark_final_audit.json"])
+        audit["tasks"][0]["source"] = "missing/result.json"
+        payload["benchmark_final_audit.json"] = json.dumps(audit).encode()
+        with self.assertRaisesRegex(ValueError, "Source member path"):
+            audit_records(payload, self.reference)
 
     def test_missing_episode_rejected(self):
         payload = dict(self.payload)

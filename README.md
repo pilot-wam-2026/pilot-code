@@ -17,8 +17,7 @@ currently under review.
 
 **Release status (September 30, 2026):** code and sanitized logs are public.
 The original 340000 checkpoint and customized RoboCasa resources are uploaded
-to a **private** Hugging Face repository. Authorized range downloads passed;
-anonymous downloads are not available. See [access and integrity](docs/DOWNLOAD.md).
+to a **public** Hugging Face repository. 
 
 ## Start Here
 
@@ -71,7 +70,6 @@ demonstration datasets, or the later training-validation export.
 | Latent coordinates | Explicit `legacy` mode |
 | Optional generated clip | 5 frames, not the old 93-frame diagnostic |
 | Execution platform | Linux x86_64, NVIDIA CUDA and EGL |
-| macOS | Download, inspect, and archive only; no native execution claim |
 
 The internal `starVLA` package and architecture identifiers are retained for
 checkpoint compatibility. They are not alternative release names.
@@ -92,7 +90,6 @@ Download the resource repository into a separate directory:
 
 ```bash
 python -m pip install huggingface_hub
-hf auth login  # Required while the resource repository is private.
 hf download mxk1998/WM4A --local-dir PILOT
 cd PILOT
 ```
@@ -105,8 +102,7 @@ python -m release.verify --assets
 ```
 
 The Hugging Face repository ID remains **`mxk1998/WM4A`**; its project name
-and released artifact are **PILOT**. Repository visibility is not changed
-by the release scripts. Login requires an account already granted access.
+and released artifact are **PILOT**.
 For downloading only weights/assets into a GitHub checkout without replacing
 its code or documentation, use [Download Option B](docs/DOWNLOAD.md#option-b-github-code-plus-only-the-large-resources).
 
@@ -118,9 +114,7 @@ Checkpoint SHA-256:
 
 ## Installation
 
-Policy and simulation use **separate Python 3.10 environments**. Do not
-replace the supplied RoboCasa/RoboSuite implementations with an arbitrary
-newer `pip install robocasa`.
+Policy and simulation use **separate Python 3.10 environments**. 
 
 ```bash
 bash environment/create_linux_envs.sh /absolute/new/pilot-envs
@@ -188,7 +182,6 @@ scoring semantics, and troubleshooting are in
 | Manuscript RoboCasa-GR1 table | 58.3% | Reported manuscript experiment |
 | Original 340000 checkpoint, repaired-protocol source evaluation | **717/1200 = 59.75%** | 24 tasks, 50 episodes each, seeds 9000-9049, any-physical-step success |
 | Same trajectories, block-end-only rescoring | 712/1200 = 59.33% | Not an independent rerun |
-| Same trajectories, final-step-only rescoring | 637/1200 = 53.08% | Not an independent rerun |
 
 **These measurements are not interchangeable.** The source evaluation is
 not a reproduction of every number in the paper, nor proof that a new
